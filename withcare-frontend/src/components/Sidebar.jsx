@@ -21,7 +21,13 @@ function Avatar({ vm, style }) {
   );
 }
 
-export default function Sidebar({ collapsed, onToggle, profiles, onAddProfile, conversations, activeConvId, onConvClick, onConvDelete, onNewChat, user, onSignOut, accent }) {
+const NAV = [
+  { id: 'chat',  label: 'Chat',              icon: '💬' },
+  { id: 'tasks', label: 'Tasks & Reminders', icon: '⏰' },
+  { id: 'plans', label: 'Workout & Diet',    icon: '🥗' },
+];
+
+export default function Sidebar({ collapsed, onToggle, profiles, onAddProfile, conversations, activeConvId, onConvClick, onConvDelete, onNewChat, activeView = 'chat', onSelectView, user, onSignOut, accent }) {
   const [hoveredConv, setHoveredConv] = useState(null);
   const [hoveredProfile, setHoveredProfile] = useState(null);
 
@@ -36,6 +42,15 @@ export default function Sidebar({ collapsed, onToggle, profiles, onAddProfile, c
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '16px 0' }}>
         <button onClick={onToggle} style={{ width: '34px', height: '34px', border: 'none', background: '#EAE3D7', borderRadius: '9px', color: '#6E7872', fontSize: '15px', cursor: 'pointer' }}>»</button>
         <div style={logoMarkStyle}>w</div>
+        <div style={{ width: '30px', height: '1px', background: '#E1D9CC' }} />
+        {NAV.map(n => {
+          const on = activeView === n.id;
+          return (
+            <button key={n.id} title={n.label} onClick={() => (n.id === 'chat' ? onNewChat() : onSelectView && onSelectView(n.id))}
+              style={{ width: '38px', height: '38px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '17px',
+                background: on ? '#DCEAE4' : 'transparent' }}>{n.icon}</button>
+          );
+        })}
         <div style={{ width: '30px', height: '1px', background: '#E1D9CC' }} />
         {profiles.map(p => (
           <button key={p.id} onClick={p.onClick} title={p.name} style={p.railAvatarStyle}>
@@ -74,6 +89,21 @@ export default function Sidebar({ collapsed, onToggle, profiles, onAddProfile, c
       <button onClick={onNewChat} style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '9px', width: '100%', padding: '11px 13px', borderRadius: '12px', border: '1px solid #DDD4C5', background: '#FBF9F4', color: '#3A4641', fontSize: '14px', fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}>
         <span style={{ fontSize: '17px', color: accent, lineHeight: 1 }}>+</span> New conversation
       </button>
+
+      {/* Feature nav */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '12px' }}>
+        {NAV.map(n => {
+          const on = activeView === n.id;
+          return (
+            <button key={n.id} onClick={() => (n.id === 'chat' ? onNewChat() : onSelectView && onSelectView(n.id))}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 11px', borderRadius: '10px',
+                border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13.5px', fontWeight: on ? 600 : 500,
+                background: on ? '#EEF4F1' : 'transparent', color: on ? accent : '#5E665F' }}>
+              <span style={{ fontSize: '15px' }}>{n.icon}</span> {n.label}
+            </button>
+          );
+        })}
+      </div>
 
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', margin: '18px -4px 0', padding: '0 4px' }}>
 

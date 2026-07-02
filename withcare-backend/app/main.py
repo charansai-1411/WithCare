@@ -10,6 +10,7 @@ from app.db.database import init_db
 from app.routes.conversations import router as conv_router
 from app.routes.auth import router as auth_router
 from app.routes.profiles import router as profiles_router
+from app.routes.kg import router as kg_router
 from app.models.request_models import ChatRequest
 from app.orchestrator.agent import WithCareAgent
 from app.utils.exceptions import ClinicalRequestError, WithCareError
@@ -47,6 +48,7 @@ async def startup():
 # ── Include routers ────────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(profiles_router)
+app.include_router(kg_router)
 app.include_router(conv_router)
 
 # ── Agentic core (the deterministic pipeline was removed after parity was proven) ──

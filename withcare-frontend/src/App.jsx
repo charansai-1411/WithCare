@@ -3,6 +3,8 @@ import Sidebar from './components/Sidebar';
 import ChatThread from './components/ChatThread';
 import LoginScreen from './components/LoginScreen';
 import ProfileModal from './components/ProfileModal';
+import TasksView from './components/views/TasksView';
+import PlansView from './components/views/PlansView';
 import { useChat, dbMsgToUiMsg } from './hooks/useChat';
 import { getStoredUser, signOut } from './services/authService';
 import { getLocation, setStoredLocation } from './services/locationService';
@@ -20,6 +22,7 @@ export default function App() {
   const [user, setUser] = useState(getStoredUser());
 
   const [collapsed,       setCollapsed]       = useState(false);
+  const [activeView,      setActiveView]      = useState('chat'); // chat | tasks | plans
   const [profiles,        setProfiles]        = useState([]);
   const [activeProfileId, setActiveProfileId] = useState(null);
   const [modal,           setModal]           = useState(null); // null | 'new' | profileObj
@@ -88,6 +91,7 @@ export default function App() {
 
   // ── Conversations ────────────────────────────────────────────────────────────
   const openConversation = useCallback(async (convId) => {
+    setActiveView('chat');
     if (convId === activeConvId) return;
     setLoadingConv(true);
     setActiveConvId(convId);
@@ -98,6 +102,7 @@ export default function App() {
   }, [userId, activeConvId, reset]);
 
   const newChat = useCallback(() => {
+    setActiveView('chat');
     pendingConvId.current = null;
     setActiveConvId(null);
     reset();
@@ -214,6 +219,8 @@ export default function App() {
           onConvClick={openConversation}
           onConvDelete={removeConversation}
           onNewChat={newChat}
+          activeView={activeView}
+          onSelectView={setActiveView}
           user={user}
           onSignOut={handleSignOut}
           accent={ACCENT}
@@ -226,8 +233,12 @@ export default function App() {
             <button onClick={() => setCollapsed(false)} style={{ width: '34px', height: '34px', border: 'none', background: '#EFEAE0', borderRadius: '9px', color: '#6E7872', fontSize: '16px', cursor: 'pointer' }}>☰</button>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '13px', color: '#9A9485' }}>Managing care for</div>
-            <div style={{ fontFamily: "'Newsreader', serif", fontSize: '18px', fontWeight: 500, color: '#26322F', lineHeight: 1.1 }}>{activeProfile?.name || '—'}</div>
+            <div style={{ fontSize: '13px', color: '#9A9485' }}>
+              {activeView === 'tasks' ? 'Viewing' : activeView === 'plans' ? 'Viewing' : 'Managing care for'}
+            </div>
+            <div style={{ fontFamily: "'Newsreader', serif", fontSize: '18px', fontWeight: 500, color: '#26322F', lineHeight: 1.1 }}>
+              {activeView === 'tasks' ? 'Tasks & Reminders' : activeView === 'plans' ? 'Workout & Diet Plans' : (activeProfile?.name || '—')}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
@@ -247,7 +258,11 @@ export default function App() {
           </div>
         </header>
 
-        {loadingConv ? (
+        {activeView === 'tasks' ? (
+          <TasksView userId={userId} />
+        ) : activeView === 'plans' ? (
+          <PlansView userId={userId} />
+        ) : loadingConv ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9A9485', fontSize: '14px' }}>
             Loading conversation...
           </div>
