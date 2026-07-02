@@ -1,0 +1,19 @@
+{
+  "id": "aiims_hyderabad",
+  "name": "AIIMS Bibinagar (Hyderabad)",
+  "type": "government_hospital",
+  "city": "Hyderabad",
+  "state": "Telangana",
+  "address": "Bibinagar, Yadadri Bhuvanagiri, Telangana 508126",
+  "lat": 17.4847,
+  "lng": 78.8979,
+  "phone": "08682-270800",
+  "website": "https://www.aiimsbibinagar.edu.in",
+  "specialties": ["general_medicine", "surgery", "paediatrics", "gynaecology", "orthopaedics"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": false,
+  "emergency_available": true,
+  "source_url": "https://www.aiimsbibinagar.edu.in/departments",
+  "tags": ["tertiary", "teaching_hospital", "national_importance", "telangana"]
+}

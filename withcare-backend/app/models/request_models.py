@@ -1,0 +1,38 @@
+from pydantic import BaseModel, Field
+
+
+class FamilyMember(BaseModel):
+    id: str = ""          # profile id — keys the knowledge-graph memory
+    name: str
+    relation: str = ""  # "self" | "parent" | "child" | "spouse" | free text
+    kind: str = "person"  # "person" | "pet"
+    species: str = ""      # for pets: dog, cat, etc.
+    email: str = ""        # Gmail — used to sync appointment to their calendar & share the plan
+    age: int | None = None
+    gender: str = ""
+    conditions: str = ""   # known health conditions/problems for tailoring guidance
+    notes: str = ""
+    calendar_id: str | None = None  # Google Calendar ID; None = caregiver's primary
+    consent_given: bool = False
+
+
+class ConversationTurn(BaseModel):
+    role: str          # "user" | "assistant"
+    content: str       # plain text of the message
+
+
+class Coordinates(BaseModel):
+    lat: float
+    lng: float
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+    session_id: str = Field(..., description="Client-generated UUID for conversation continuity")
+    user_id: str = ""     # authenticated user id — keys the knowledge-graph memory
+    family_profile: list[FamilyMember] | None = None
+    for_member: str | None = None
+    location: str | None = None
+    coordinates: Coordinates | None = None
+    language: str = "en"
+    history: list[ConversationTurn] = Field(default_factory=list, description="Previous turns in this conversation")

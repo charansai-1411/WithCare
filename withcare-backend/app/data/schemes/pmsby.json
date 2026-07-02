@@ -1,0 +1,19 @@
+{
+  "id": "pmsby",
+  "name": "Pradhan Mantri Suraksha Bima Yojana (PMSBY)",
+  "aka": ["PMSBY", "PM Suraksha Bima"],
+  "coverage_inr": 200000,
+  "beneficiaries": "Bank account holders aged 18-70 years; accidental death and disability cover",
+  "eligible_states": ["all"],
+  "card_required": false,
+  "empanelled_hospital_count": 0,
+  "application_url": "https://jansuraksha.gov.in/PMSBY.aspx",
+  "helpline": "1800-180-1111",
+  "source_url": "https://jansuraksha.gov.in/Files/PMSBY/English/FAQ.pdf",
+  "tags": ["government", "accident", "disability", "insurance", "low_income", "bank_account"],
+  "income_limit_annual_inr": null,
+  "state": "national",
+  "documents_required": ["Bank account details", "Aadhaar card", "Mobile number linked to bank"],
+  "how_to_apply": "Enroll via net banking, bank branch, or SMS. Annual premium of ₹20 auto-debited from bank account.",
+  "updated_at": "2026-01-01"
+}

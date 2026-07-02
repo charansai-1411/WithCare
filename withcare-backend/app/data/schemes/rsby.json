@@ -1,0 +1,19 @@
+{
+  "id": "rsby",
+  "name": "Rashtriya Swasthya Bima Yojana (RSBY)",
+  "aka": ["RSBY", "National Health Insurance Scheme"],
+  "coverage_inr": 30000,
+  "beneficiaries": "BPL families (up to 5 members) in unorganised sector",
+  "eligible_states": ["all"],
+  "card_required": true,
+  "empanelled_hospital_count": 8000,
+  "application_url": "https://rsby.gov.in",
+  "helpline": "1800-180-1104",
+  "source_url": "https://rsby.gov.in/scheme_overview.aspx",
+  "tags": ["government", "BPL", "unorganised_sector", "hospitalization", "inpatient"],
+  "income_limit_annual_inr": null,
+  "state": "national",
+  "documents_required": ["BPL ration card", "Aadhaar card", "Family photo"],
+  "how_to_apply": "Register at district enrollment camp or nearest Common Service Centre. Biometric smart card issued on enrollment.",
+  "updated_at": "2026-01-01"
+}

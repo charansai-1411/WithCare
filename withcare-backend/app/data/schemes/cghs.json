@@ -1,0 +1,19 @@
+{
+  "id": "cghs",
+  "name": "Central Government Health Scheme (CGHS)",
+  "aka": ["CGHS"],
+  "coverage_inr": 0,
+  "beneficiaries": "Central government employees, pensioners, and their dependents",
+  "eligible_states": ["all"],
+  "card_required": true,
+  "empanelled_hospital_count": 2000,
+  "application_url": "https://cghs.gov.in",
+  "helpline": "011-23061054",
+  "source_url": "https://cghs.gov.in/index1.jsp",
+  "tags": ["government", "central_government_employee", "pensioner", "hospitalization", "outpatient", "medicines"],
+  "income_limit_annual_inr": null,
+  "state": "national",
+  "documents_required": ["CGHS card", "Employee/Pensioner ID", "Dependent proof"],
+  "how_to_apply": "Apply through employer (for serving employees) or CGHS office (for pensioners). CGHS Wellness Centre assigned based on residence.",
+  "updated_at": "2026-01-01"
+}

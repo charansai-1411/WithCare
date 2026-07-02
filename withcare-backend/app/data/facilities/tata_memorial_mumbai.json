@@ -1,0 +1,19 @@
+{
+  "id": "tata_memorial_mumbai",
+  "name": "Tata Memorial Hospital Mumbai",
+  "type": "government_hospital",
+  "city": "Mumbai",
+  "state": "Maharashtra",
+  "address": "Dr Ernest Borges Road, Parel, Mumbai 400012",
+  "lat": 19.0048,
+  "lng": 72.8418,
+  "phone": "022-24177000",
+  "website": "https://tmc.gov.in",
+  "specialties": ["oncology", "radiation_oncology", "surgical_oncology", "haematology", "cancer"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": false,
+  "emergency_available": true,
+  "source_url": "https://tmc.gov.in/index.php/patient-care/departments",
+  "tags": ["tertiary", "cancer_centre", "national_importance", "super_speciality", "government"]
+}

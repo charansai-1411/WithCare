@@ -1,0 +1,19 @@
+{
+  "id": "safdarjung_delhi",
+  "name": "Safdarjung Hospital New Delhi",
+  "type": "government_hospital",
+  "city": "New Delhi",
+  "state": "Delhi",
+  "address": "Ansari Nagar West, New Delhi 110029",
+  "lat": 28.5687,
+  "lng": 77.2063,
+  "phone": "011-26165060",
+  "website": "https://vmmc-sjh.nic.in",
+  "specialties": ["general_medicine", "surgery", "gynaecology", "paediatrics", "orthopaedics", "psychiatry"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": true,
+  "emergency_available": true,
+  "source_url": "https://vmmc-sjh.nic.in/about-hospital",
+  "tags": ["tertiary", "teaching_hospital", "government", "central_government"]
+}

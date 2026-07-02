@@ -1,0 +1,19 @@
+{
+  "id": "aiims_delhi",
+  "name": "AIIMS New Delhi",
+  "type": "government_hospital",
+  "city": "New Delhi",
+  "state": "Delhi",
+  "address": "Sri Aurobindo Marg, Ansari Nagar, New Delhi 110029",
+  "lat": 28.5665,
+  "lng": 77.2100,
+  "phone": "011-26588500",
+  "website": "https://www.aiims.edu",
+  "specialties": ["oncology", "cardiology", "neurology", "nephrology", "general_medicine", "orthopaedics", "paediatrics"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": false,
+  "emergency_available": true,
+  "source_url": "https://www.aiims.edu/en/departments-and-centres.html",
+  "tags": ["tertiary", "teaching_hospital", "national_importance", "super_speciality"]
+}

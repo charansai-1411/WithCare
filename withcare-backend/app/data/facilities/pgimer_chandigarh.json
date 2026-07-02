@@ -1,0 +1,19 @@
+{
+  "id": "pgimer_chandigarh",
+  "name": "PGIMER Chandigarh",
+  "type": "government_hospital",
+  "city": "Chandigarh",
+  "state": "Chandigarh",
+  "address": "Sector 12, Chandigarh 160012",
+  "lat": 30.7664,
+  "lng": 76.7756,
+  "phone": "0172-2755555",
+  "website": "https://pgimer.edu.in",
+  "specialties": ["cardiology", "neurology", "nephrology", "oncology", "gastroenterology", "general_medicine", "paediatrics"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": false,
+  "emergency_available": true,
+  "source_url": "https://pgimer.edu.in/PGIMER_PORTAL/PGIMERPORTAL/portal/deptlist.jsp",
+  "tags": ["tertiary", "teaching_hospital", "national_importance", "super_speciality"]
+}

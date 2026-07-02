@@ -1,0 +1,19 @@
+{
+  "id": "arogyasri",
+  "name": "Aarogyasri Health Care Trust (Telangana)",
+  "aka": ["Aarogyasri", "Arogyasri", "T-Aarogyasri"],
+  "coverage_inr": 500000,
+  "beneficiaries": "BPL families in Telangana with white ration card; covers major surgeries and critical illnesses",
+  "eligible_states": ["Telangana"],
+  "card_required": true,
+  "empanelled_hospital_count": 400,
+  "application_url": "https://aarogyasri.telangana.gov.in",
+  "helpline": "104",
+  "source_url": "https://aarogyasri.telangana.gov.in/scheme-details",
+  "tags": ["government", "state_scheme", "BPL", "telangana", "hospitalization", "surgery", "cancer", "cardiac"],
+  "income_limit_annual_inr": null,
+  "state": "Telangana",
+  "documents_required": ["White ration card", "Aadhaar card", "Caste certificate (if applicable)"],
+  "how_to_apply": "Visit nearest empanelled network hospital. Aarogyamitra at hospital assists with enrollment and treatment authorization.",
+  "updated_at": "2026-01-01"
+}

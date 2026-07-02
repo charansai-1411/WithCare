@@ -1,0 +1,19 @@
+{
+  "id": "nims_hyderabad",
+  "name": "Nizam's Institute of Medical Sciences (NIMS)",
+  "type": "government_hospital",
+  "city": "Hyderabad",
+  "state": "Telangana",
+  "address": "Punjagutta, Hyderabad, Telangana 500082",
+  "lat": 17.4239,
+  "lng": 78.4483,
+  "phone": "040-23489000",
+  "website": "https://www.nimsindia.org",
+  "specialties": ["cardiology", "neurology", "oncology", "nephrology", "gastroenterology", "orthopaedics"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": true,
+  "emergency_available": true,
+  "source_url": "https://www.nimsindia.org/departments",
+  "tags": ["tertiary", "teaching_hospital", "super_speciality", "telangana", "state_government"]
+}

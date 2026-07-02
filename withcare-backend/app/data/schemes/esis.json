@@ -1,0 +1,19 @@
+{
+  "id": "esis",
+  "name": "Employees State Insurance Scheme (ESIS)",
+  "aka": ["ESI", "ESIC", "Employees State Insurance"],
+  "coverage_inr": 0,
+  "beneficiaries": "Employees earning up to ₹21,000/month in factories and establishments; covers employee and dependents",
+  "eligible_states": ["all"],
+  "card_required": true,
+  "empanelled_hospital_count": 1500,
+  "application_url": "https://esic.gov.in",
+  "helpline": "1800-11-2526",
+  "source_url": "https://esic.gov.in/medical-benefit",
+  "tags": ["government", "employment", "salaried", "hospitalization", "outpatient", "maternity", "disability"],
+  "income_limit_annual_inr": 252000,
+  "state": "national",
+  "documents_required": ["ESI card", "Employee ID", "Employer registration proof"],
+  "how_to_apply": "Enrollment done by employer. Employee receives ESI card. Show card at ESIC dispensary or empanelled hospital.",
+  "updated_at": "2026-01-01"
+}

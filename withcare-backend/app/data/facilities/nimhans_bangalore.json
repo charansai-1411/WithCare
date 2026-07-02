@@ -1,0 +1,19 @@
+{
+  "id": "nimhans_bangalore",
+  "name": "NIMHANS Bangalore",
+  "type": "government_hospital",
+  "city": "Bangalore",
+  "state": "Karnataka",
+  "address": "Hosur Road, Bangalore, Karnataka 560029",
+  "lat": 12.9403,
+  "lng": 77.5960,
+  "phone": "080-46110007",
+  "website": "https://nimhans.ac.in",
+  "specialties": ["psychiatry", "neurology", "neurosurgery", "clinical_psychology", "addiction_medicine"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": false,
+  "emergency_available": true,
+  "source_url": "https://nimhans.ac.in/clinical-services/",
+  "tags": ["tertiary", "teaching_hospital", "national_importance", "mental_health", "neuroscience"]
+}

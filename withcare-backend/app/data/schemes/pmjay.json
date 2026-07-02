@@ -1,0 +1,19 @@
+{
+  "id": "pmjay",
+  "name": "Pradhan Mantri Jan Arogya Yojana (PM-JAY)",
+  "aka": ["Ayushman Bharat", "PMJAY", "AB-PMJAY"],
+  "coverage_inr": 500000,
+  "beneficiaries": "Economically weaker sections (BPL families) based on SECC 2011 database",
+  "eligible_states": ["all"],
+  "card_required": true,
+  "empanelled_hospital_count": 24000,
+  "application_url": "https://pmjay.gov.in",
+  "helpline": "14555",
+  "source_url": "https://pmjay.gov.in/about/pmjayscheme",
+  "tags": ["government", "hospitalization", "BPL", "secondary", "tertiary", "surgery", "cancer", "dialysis"],
+  "income_limit_annual_inr": null,
+  "state": "national",
+  "documents_required": ["Aadhaar card", "Ration card", "SECC enrollment proof"],
+  "how_to_apply": "Visit nearest empanelled hospital or Common Service Centre. Eligibility verified via SECC database. Ayushman card issued on verification.",
+  "updated_at": "2026-01-01"
+}

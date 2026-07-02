@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environments & credentials
+.env
+.env.*
+!.env.example
+credentials*.json
+*token*.json
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,19 @@
+{
+  "id": "kgmu_lucknow",
+  "name": "King George's Medical University (KGMU)",
+  "type": "government_hospital",
+  "city": "Lucknow",
+  "state": "Uttar Pradesh",
+  "address": "Shah Mina Road, Chowk, Lucknow, Uttar Pradesh 226003",
+  "lat": 26.8634,
+  "lng": 80.9269,
+  "phone": "0522-2257450",
+  "website": "https://kgmu.org",
+  "specialties": ["general_medicine", "surgery", "oncology", "cardiology", "neurology", "paediatrics", "orthopaedics"],
+  "accepts_pmjay": true,
+  "accepts_cghs": true,
+  "accepts_esis": true,
+  "emergency_available": true,
+  "source_url": "https://kgmu.org/departments.php",
+  "tags": ["tertiary", "teaching_hospital", "state_government", "uttar_pradesh"]
+}
