@@ -189,7 +189,6 @@ cases:
     desc: 'answer about a NAMED scheme, not re-dump all'
     profile: amma
     location: Hyderabad
-    xfail: true
     turns:
       - { say: "check health schemes for my mother", expect: { type: plan } }
       - { say: "am I eligible for Aarogyasri specifically?", expect: { contains_any: ["aarogyasri"], agents_none: [scheme_agent] } }
@@ -197,7 +196,6 @@ cases:
     desc: 'PM-JAY eligibility answered specifically'
     profile: meera
     location: Hyderabad
-    xfail: true
     turns:
       - { say: "check coverage for my sister", expect: { type: plan } }
       - { say: "is she eligible for PM-JAY?", expect: { contains_any: ["pm-jay","pmjay","ayushman"], agents_none: [scheme_agent] } }
@@ -205,44 +203,36 @@ cases:
     desc: 'answer from memory about mother, do not re-ask'
     profile: amma
     location: Hyderabad
-    xfail: true
     turns: [{ say: "what do you know about my mother?", expect: { contains_any: ["diabetes","hypertension"], not_contains: ["what health need","what concern","what would you like","could you tell me what"] } }]
   - id: memory_recall_appa
     desc: "answer about father's health from memory"
     profile: appa
     location: Hyderabad
-    xfail: true
     turns: [{ say: "tell me about my father's health", expect: { contains_any: ["heart","cardiac","coronary"], not_contains: ["what health need","what concern","could you tell me what"] } }]
 
   # ── FUTURE FEATURES (xfail) — targets for the roadmap ──────────────────────────
   - id: reminder_daily_tablet_amma
     desc: 'set a recurring reminder for mother'
     profile: amma
-    xfail: true
     turns: [{ say: "remind my mother to take her tablet every day at 1pm, notify 10 minutes before", expect: { contains_any: ["reminder is set","i've set a","daily reminder","added to","calendar"], not_contains: ["i can help you find hospitals"] } }]
   - id: reminder_delegated_wife
     desc: 'delegated reminder to the wife'
     profile: wife
-    xfail: true
     turns: [{ say: "remind my wife to give the dog his medicine at 8am today", expect: { contains_any: ["reminder is set","i've set a","sent to priya","priya's calendar","added to"], not_contains: ["i can help you find hospitals"] } }]
   - id: diet_plan_pet
     desc: 'diet plan for a pet with a condition'
     profile: bruno
-    xfail: true
     turns: [{ say: "create a diet plan for my dog", expect: { contains_any: ["breakfast","dinner","day 1","meal plan","monday"], not_contains: ["i can help you find hospitals"] } }]
   - id: diet_plan_mother
     desc: "diabetic diet plan for mother"
     profile: amma
-    xfail: true
     turns: [{ say: "make a weekly diet plan for my mother's diabetes", expect: { contains_any: ["breakfast","dinner","day 1","meal plan","monday"], not_contains: ["i can help you find hospitals"] } }]
   - id: workout_plan_father
     desc: 'workout plan for father tailored to heart condition'
     profile: appa
-    xfail: true
     turns: [{ say: "create this week's workout plan for my father", expect: { contains_any: ["day 1","monday","reps","sets","warm-up","stretch"], not_contains: ["i can help you find hospitals"] } }]
   - id: vet_for_pet
     desc: 'find a vet for a pet'
     profile: bruno
     location: Hyderabad
-    xfail: true
     turns: [{ say: "find a good vet clinic near me for my dog", expect: { contains_any: ["vet","veterinary","animal"] } }]

@@ -51,11 +51,15 @@ async def create_calendar_event(
     end_datetime: str,
     location: str | None = None,
     attendee_emails: list[str] | None = None,
+    reminder_minutes: list[int] | None = None,
+    recurrence: str | None = None,
 ) -> dict:
     """
     Creates a Google Calendar event.
     Returns {"event_id": str, "html_link": str}
     start_datetime / end_datetime must be ISO 8601 strings (e.g. 2026-07-10T10:00:00)
+    - reminder_minutes: popup+email reminders this many minutes before (e.g. [10] or [60]).
+    - recurrence: an RRULE string for recurring events (e.g. "RRULE:FREQ=DAILY").
     """
     try:
         service = get_calendar_service()
@@ -71,6 +75,14 @@ async def create_calendar_event(
             event_body["location"] = location
         if attendee_emails:
             event_body["attendees"] = [{"email": e} for e in attendee_emails]
+        if recurrence:
+            event_body["recurrence"] = [recurrence]
+        if reminder_minutes:
+            overrides = []
+            for m in reminder_minutes:
+                overrides.append({"method": "popup", "minutes": m})
+                overrides.append({"method": "email", "minutes": m})
+            event_body["reminders"] = {"useDefault": False, "overrides": overrides}
 
         result = service.events().insert(calendarId=calendar_id, body=event_body).execute()
         logger.info(f"Calendar event created: {result['id']} — {summary}")

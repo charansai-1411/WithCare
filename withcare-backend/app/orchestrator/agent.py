@@ -20,8 +20,11 @@ from typing import AsyncGenerator
 from google.genai import types
 
 from app.agents.action_agent import ActionAgent
+from app.agents.diet_agent import DietAgent
 from app.agents.facility_agent import FacilityAgent
+from app.agents.reminder_agent import ReminderAgent
 from app.agents.scheme_agent import SchemeAgent
+from app.agents.workout_agent import WorkoutAgent
 from app.db.database import get_db
 from app.models.request_models import ChatRequest
 from app.models.response_models import SourcedStep, StreamChunk
@@ -29,14 +32,11 @@ from app.orchestrator.router import classify_intent
 from app.services.gemini_service import build_tools, generate_with_tools
 from app.services.grounding import renumber_steps
 from app.services.memory_service import get_profile_memory
+from app.services.skills import load_skill
 from app.utils.exceptions import ClinicalRequestError
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-_SKILL_PATH = __import__("os").path.join(
-    __import__("os").path.dirname(__file__), "..", "..", "skills", "orchestrator.md"
-)
 
 _YES = {"yes", "yeah", "yep", "yup", "sure", "ok", "okay", "confirm", "confirmed",
         "go ahead", "book it", "do it", "please do", "sounds good", "yes please", "book", "proceed"}
@@ -101,12 +101,44 @@ TOOL_DECLS = [
             "required": ["procedure", "date"],
         },
     },
+    {
+        "name": "set_reminder",
+        "description": ("Set a calendar + email reminder for a SPECIFIC person (recurring or "
+                        "one-time). Delivered to that person only (their calendar + email)."),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "recipient": {"type": "string", "description": "Who it's for: 'mother','wife', a name, or empty for the active person"},
+                "message": {"type": "string", "description": "What to remind them"},
+                "date": {"type": "string", "description": "YYYY-MM-DD for one-time; empty for recurring (starts today)"},
+                "time": {"type": "string", "description": "HH:MM 24h"},
+                "recurrence": {"type": "string", "enum": ["none", "daily", "weekly", "monthly"]},
+                "lead_minutes": {"type": "integer", "description": "Notify this many minutes before (default 10)"},
+            },
+            "required": ["message", "time"],
+        },
+    },
+    {
+        "name": "plan_workout",
+        "description": "Create a weekly workout plan for the active person, tailored to their age/conditions.",
+        "parameters": {"type": "object", "properties": {
+            "focus": {"type": "string", "description": "Optional focus, e.g. 'weight loss', 'mobility'"}}},
+    },
+    {
+        "name": "plan_diet",
+        "description": "Create a 7-day diet plan for the active person or pet, tailored to their conditions.",
+        "parameters": {"type": "object", "properties": {
+            "focus": {"type": "string", "description": "Optional focus, e.g. 'diabetes', 'weight loss'"}}},
+    },
 ]
 
 _AGENT_FOR_TOOL = {
     "find_facilities": ("facility_agent", "Finding hospitals and facilities nearby..."),
     "find_coverage": ("scheme_agent", "Searching schemes and insurance..."),
     "schedule_appointment": ("action_agent", "Preparing your appointment..."),
+    "set_reminder": ("reminder_agent", "Setting the reminder..."),
+    "plan_workout": ("workout_agent", "Designing a workout plan..."),
+    "plan_diet": ("diet_agent", "Designing a diet plan..."),
 }
 
 
@@ -115,13 +147,11 @@ class WithCareAgent:
         self.facility_agent = FacilityAgent()
         self.scheme_agent = SchemeAgent()
         self.action_agent = ActionAgent()
+        self.reminder_agent = ReminderAgent()
+        self.workout_agent = WorkoutAgent()
+        self.diet_agent = DietAgent()
         self.tools = build_tools(TOOL_DECLS)
-        try:
-            with open(_SKILL_PATH, encoding="utf-8") as f:
-                self.skill = f.read()
-        except Exception as e:
-            logger.warning(f"skill load failed: {e}")
-            self.skill = "You are WithCare, a healthcare navigation assistant for India."
+        self.skill = load_skill("orchestrator") or "You are WithCare, a healthcare navigation assistant for India."
         logger.info("WithCareAgent (agentic core) initialized")
 
     # ── pending action persistence (confirmation gate) ──────────────────────────
@@ -277,6 +307,23 @@ class WithCareAgent:
             r = await self.scheme_agent.run(ctx)
             collected.extend(r.steps)
             return {"result": self._summarize(r.steps) or "No coverage found."}
+
+        if name == "set_reminder":
+            ctx = {**base_ctx,
+                   "recipient": args.get("recipient", ""), "message": args.get("message", ""),
+                   "date": args.get("date", ""), "time": args.get("time", ""),
+                   "recurrence": args.get("recurrence", "none"),
+                   "lead_minutes": args.get("lead_minutes", 10)}
+            r = await self.reminder_agent.run(ctx)
+            collected.extend(r.steps)
+            return {"result": self._summarize(r.steps) or "Reminder set."}
+
+        if name in ("plan_workout", "plan_diet"):
+            agent = self.workout_agent if name == "plan_workout" else self.diet_agent
+            r = await agent.run({**base_ctx, "focus": args.get("focus", "")})
+            collected.extend(r.steps)
+            # Return the full plan so the model can present it (it's the whole point).
+            return {"result": (r.steps[0].detail if r.steps else "Could not create the plan.")}
 
         if name == "schedule_appointment":
             missing = [k for k in ("procedure", "date") if not args.get(k)]

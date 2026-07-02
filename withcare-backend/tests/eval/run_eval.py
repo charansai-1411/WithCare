@@ -54,9 +54,12 @@ def classify(resp: httpx.Response) -> dict:
         return {"kind": "error", "text": str(body.get("error", body)), "agents": set()}
     body = resp.json()
     if isinstance(body, dict) and body.get("ordered_steps") is not None:
-        agents = {s.get("agent") for s in body["ordered_steps"] if s.get("agent")}
-        return {"kind": "plan", "text": body.get("message", ""), "agents": agents,
-                "steps": len(body["ordered_steps"])}
+        steps = body["ordered_steps"]
+        agents = {s.get("agent") for s in steps if s.get("agent")}
+        # Searchable text = the message PLUS the card content (plans/results live in the cards).
+        text = body.get("message", "") + " " + " ".join(
+            f"{s.get('action','')} {s.get('detail','')}" for s in steps)
+        return {"kind": "plan", "text": text, "agents": agents, "steps": len(steps)}
     if isinstance(body, dict) and body.get("clarify") is not None:
         return {"kind": "clarify", "text": body["clarify"], "agents": set(), "steps": 0}
     return {"kind": "other", "text": str(body), "agents": set(), "steps": 0}
@@ -127,7 +130,8 @@ def run_case_retry(client, case, uid, members, attempts: int):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="run a single case id")
-    ap.add_argument("--attempts", type=int, default=3, help="max attempts per case (LLM variance)")
+    ap.add_argument("--attempts", type=int, default=1,
+                    help="max attempts per case (raise to 2-3 only when investigating flakiness — costs LLM calls)")
     args = ap.parse_args()
 
     with open(CASES, encoding="utf-8") as f:

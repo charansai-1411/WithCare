@@ -5,6 +5,7 @@ from app.agents.base_agent import BaseAgent
 from app.models.response_models import AgentResult, SourcedStep
 from app.services.gemini_service import generate_with_search
 from app.services.memory_service import write_fact
+from app.services.skills import load_skill
 from app.tools.firestore_tool import query_schemes
 
 
@@ -113,6 +114,7 @@ class SchemeAgent(BaseAgent):
         condition = context.get("condition", "")
 
         system = (
+            load_skill("coverage") + "\n\n"
             "You are a health-insurance research assistant for India. Use Google Search to find "
             "CURRENT, real private health insurance plans from reputable insurers (e.g. Star Health, "
             "HDFC ERGO, Niva Bupa, Care Health, ICICI Lombard) or marketplaces (PolicyBazaar). "

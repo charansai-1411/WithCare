@@ -43,7 +43,12 @@ Read the full conversation and determine two things:
      "schedule an appointment", "which scheme covers this", "book eye checkup", "schemes for her
      diabetes". Naming a disease to find care/coverage is NOT clinical; asking us to decide the
      diagnosis or treatment IS.
-   When in doubt between "asking us to judge a symptom/treatment" and "navigation", choose clinical.
+   - NO also — general WELLNESS help is fine, even for a named condition and for PETS:
+     "create a diet plan for my dog", "make a weekly workout plan for my father", "meal plan for
+     her diabetes", "set a reminder to take medicine at 1pm". Diet/fitness/reminders — for people
+     OR pets — are lifestyle guidance, not medical treatment. Never mark these clinical.
+   When in doubt between "asking us to judge a symptom or prescribe a medicine/treatment" and
+   "navigation or wellness help", only the former is clinical.
 
 2. is_ambiguous: Is there genuinely zero health context to act on?
    - YES: "help me" / "book something" with absolutely no other details
