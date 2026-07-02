@@ -10,9 +10,7 @@ from app.db.database import init_db
 from app.routes.conversations import router as conv_router
 from app.routes.auth import router as auth_router
 from app.routes.profiles import router as profiles_router
-from app.config import settings
 from app.models.request_models import ChatRequest
-from app.orchestrator.orchestrator import WithCareOrchestrator
 from app.orchestrator.agent import WithCareAgent
 from app.utils.exceptions import ClinicalRequestError, WithCareError
 from app.utils.logger import get_logger
@@ -51,14 +49,12 @@ app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(conv_router)
 
-# ── Handlers: deterministic pipeline (default) or agentic core (USE_AGENT=1) ──────
-orchestrator = WithCareOrchestrator()
+# ── Agentic core (the deterministic pipeline was removed after parity was proven) ──
 agent = WithCareAgent()
 
 
 def get_handler():
-    """Pick the request handler by flag so both can run in parallel during migration."""
-    return agent if settings.use_agent else orchestrator
+    return agent
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
