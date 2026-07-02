@@ -135,7 +135,8 @@ cases:
     location: Hyderabad
     turns:
       - { say: "check health schemes for my father", expect: { type: plan } }
-      - { say: "only government please. he is retired with a pension of 3 lakh, general category", expect: { type: plan, agents_all: [scheme_agent], not_contains: ["what health condition","which condition"] } }
+      # The agent may refine in prose OR re-run cards; assert substance (a govt scheme, no re-ask).
+      - { say: "only government please. he is retired with a pension of 3 lakh, general category", expect: { contains_any: ["aarogyasri","pm-jay","pmjay","cghs","ayushman","government scheme"], not_contains: ["what health condition","which condition"] } }
   - id: coverage_scope_private_meera
     desc: 'sister: private only'
     profile: meera

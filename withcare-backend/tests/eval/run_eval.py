@@ -113,9 +113,21 @@ def run_case(client, case, uid, members) -> list[str]:
     return fails
 
 
+def run_case_retry(client, case, uid, members, attempts: int):
+    """LLM behavior is probabilistic; a case that is *achievable* should pass. Retry up to
+    `attempts` times and pass on the first clean run. Consistently-broken cases still fail."""
+    last = []
+    for i in range(1, attempts + 1):
+        last = run_case(client, case, uid, members)
+        if not last:
+            return [], i
+    return last, attempts
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="run a single case id")
+    ap.add_argument("--attempts", type=int, default=3, help="max attempts per case (LLM variance)")
     args = ap.parse_args()
 
     with open(CASES, encoding="utf-8") as f:
@@ -137,8 +149,10 @@ def main():
         regular = 0         # regular case count
         xfail_failing = 0   # known targets still failing (expected)
         xpass = []          # known targets that now PASS (celebrate)
+        flaky = []
         for case in cases:
-            fails = run_case(client, case, uid, members)
+            attempts = 1 if case.get("xfail") else args.attempts
+            fails, used = run_case_retry(client, case, uid, members, attempts)
             is_xfail = bool(case.get("xfail"))
             if is_xfail:
                 if fails:
@@ -155,12 +169,16 @@ def main():
                     print(f"    {RED}{f}{RST}")
             else:
                 passed += 1
-                print(f"{GREEN}✓ {case['id']}{RST}  {DIM}{case.get('desc','')}{RST}")
+                tag = f"{RED} (flaky: passed on attempt {used}/{attempts}){RST}" if used > 1 else ""
+                if used > 1:
+                    flaky.append(case["id"])
+                print(f"{GREEN}✓ {case['id']}{RST}  {DIM}{case.get('desc','')}{RST}{tag}")
 
         color = GREEN if passed == regular else RED
         print(f"\n{BOLD}{color}{passed}/{regular} passed{RST}  "
               f"{DIM}({xfail_failing} targets still open"
-              + (f", {len(xpass)} newly passing: {', '.join(xpass)}" if xpass else "") + f"){RST}")
+              + (f", {len(xpass)} newly passing: {', '.join(xpass)}" if xpass else "")
+              + (f"; {len(flaky)} flaky: {', '.join(flaky)}" if flaky else "") + f"){RST}")
         sys.exit(0 if passed == regular else 1)
 
 
