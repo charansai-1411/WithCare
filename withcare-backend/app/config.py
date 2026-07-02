@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
     max_agent_turns: int = 5
-    use_agent: bool = False   # route /chat through the new agentic core instead of the pipeline
+    use_agent: bool = True    # default: agentic core. Set USE_AGENT=0 to use the old pipeline.
 
 
 settings = Settings()
