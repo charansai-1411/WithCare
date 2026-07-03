@@ -42,6 +42,8 @@ def init_db():
         email TEXT DEFAULT '',
         age INTEGER,
         gender TEXT DEFAULT '',
+        weight REAL,
+        height REAL,
         conditions TEXT DEFAULT '',
         notes TEXT DEFAULT '',
         photo TEXT DEFAULT '',
@@ -94,6 +96,32 @@ def init_db():
         created_at TEXT DEFAULT (datetime('now'))
     );
 
+    -- Reader (RAG): a shared per-user document library. Each doc has a freeform label/tag.
+    CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        label TEXT DEFAULT '',           -- freeform tag/note, e.g. "Amma insurance", "lab report"
+        mime TEXT DEFAULT '',
+        kind TEXT DEFAULT 'document',    -- insurance | report | prescription | document (best-effort)
+        char_count INTEGER DEFAULT 0,
+        chunk_count INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'ready',     -- processing | ready | error
+        error TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- Retrieval chunks with their embedding (JSON float array), for cosine search.
+    CREATE TABLE IF NOT EXISTS doc_chunks (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        chunk_index INTEGER DEFAULT 0,
+        text TEXT NOT NULL,
+        embedding TEXT DEFAULT '',        -- JSON array of floats
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+
     -- Agentic core: a staged irreversible action awaiting the user's explicit confirmation.
     -- The confirmation gate is deterministic; the LLM can only stage, never execute.
     CREATE TABLE IF NOT EXISTS pending_actions (
@@ -113,6 +141,9 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_kge_src ON kg_edges(src);
     CREATE INDEX IF NOT EXISTS idx_rem_profile ON reminders(profile_id);
     CREATE INDEX IF NOT EXISTS idx_rem_user ON reminders(user_id);
+    CREATE INDEX IF NOT EXISTS idx_doc_user ON documents(user_id);
+    CREATE INDEX IF NOT EXISTS idx_chunk_user ON doc_chunks(user_id);
+    CREATE INDEX IF NOT EXISTS idx_chunk_doc ON doc_chunks(document_id);
     """)
 
     # Idempotent column additions for existing DBs.
@@ -124,6 +155,8 @@ def init_db():
         "ALTER TABLE profiles ADD COLUMN kind TEXT DEFAULT 'person'",
         "ALTER TABLE profiles ADD COLUMN species TEXT DEFAULT ''",
         "ALTER TABLE profiles ADD COLUMN email TEXT DEFAULT ''",
+        "ALTER TABLE profiles ADD COLUMN weight REAL",
+        "ALTER TABLE profiles ADD COLUMN height REAL",
     ]:
         try:
             c.execute(ddl)

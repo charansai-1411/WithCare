@@ -5,27 +5,36 @@ import LoginScreen from './components/LoginScreen';
 import ProfileModal from './components/ProfileModal';
 import TasksView from './components/views/TasksView';
 import PlansView from './components/views/PlansView';
+import ProfilesView from './components/views/ProfilesView';
+import ProfileDetailView from './components/views/ProfileDetailView';
+import ReaderView from './components/views/ReaderView';
+import ConnectorsView from './components/views/ConnectorsView';
+import SettingsView from './components/views/SettingsView';
 import { useChat, dbMsgToUiMsg } from './hooks/useChat';
+import { getTheme, toggleTheme } from './services/themeService';
 import { getStoredUser, signOut } from './services/authService';
 import { getLocation, setStoredLocation } from './services/locationService';
 import { fetchProfiles, createProfile, updateProfile, deleteProfile } from './services/profileApi';
-import {
-  fetchConversations,
-  fetchMessages,
-  saveMessage,
-  deleteConversation,
-} from './services/conversationApi';
+import { fetchConversations, fetchMessages, saveMessage, deleteConversation } from './services/conversationApi';
 
-const ACCENT = '#1C7A6A';
+const VIEW_TITLE = {
+  tasks: 'Tasks & Reminders', plans: 'Workout & Diet Plans', reader: 'Reader',
+  profiles: 'Care Profiles', connectors: 'Connectors', settings: 'Settings',
+};
+
+function Sym({ name, className = '', fill = false }) {
+  return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
+}
 
 export default function App() {
   const [user, setUser] = useState(getStoredUser());
 
-  const [collapsed,       setCollapsed]       = useState(false);
-  const [activeView,      setActiveView]      = useState('chat'); // chat | tasks | plans
+  const [activeView,      setActiveView]      = useState('chat');
   const [profiles,        setProfiles]        = useState([]);
   const [activeProfileId, setActiveProfileId] = useState(null);
-  const [modal,           setModal]           = useState(null); // null | 'new' | profileObj
+  const [detailProfileId, setDetailProfileId] = useState(null);
+  const [theme,           setTheme]           = useState(getTheme());
+  const [modal,           setModal]           = useState(null);
   const [conversations,   setConversations]   = useState([]);
   const [activeConvId,    setActiveConvId]    = useState(null);
   const [loadingConv,     setLoadingConv]     = useState(false);
@@ -33,16 +42,10 @@ export default function App() {
 
   const pendingConvId = useRef(null);
   const userId = user?.id;
-
   const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0] || null;
 
-  // ── Save callback passed to useChat ─────────────────────────────────────────
   const handleSave = useCallback(async ({ role, content, carePlan }) => {
     if (!userId) return;
-
-    // Create the conversation exactly once per new chat — the id is generated and the ref
-    // set SYNCHRONOUSLY, so a fast assistant/clarify save can't race the user save into a
-    // second conversation. Only user messages ever set a title (never assistant replies).
     let convId = pendingConvId.current;
     if (!convId) {
       convId = 'c-' + ((crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now());
@@ -55,30 +58,23 @@ export default function App() {
         updated_at: new Date().toISOString(),
       }, ...prev]);
     }
-
     await saveMessage(userId, convId, {
       role, content, carePlan,
       title: role === 'user' ? content.slice(0, 70) : undefined,
       profileName: activeProfile?.name || 'You',
     });
-
     if (role === 'user') {
       setConversations(prev => prev.map(c =>
         c.id === convId
           ? { ...c, title: c.title === 'New conversation' ? content.slice(0, 70) : c.title, updated_at: new Date().toISOString() }
-          : c
-      ));
+          : c));
     }
   }, [userId, activeProfile]);
 
   const { messages, input, setInput, send, reset, onKey, msgVM } = useChat({
-    onSave: handleSave,
-    location: userLocation,
-    profile: activeProfile,
-    userId,
+    onSave: handleSave, location: userLocation, profile: activeProfile, userId,
   });
 
-  // ── Load profiles + conversations + location once signed in ──────────────────
   useEffect(() => {
     if (!userId) return;
     fetchProfiles(userId).then(list => {
@@ -89,7 +85,6 @@ export default function App() {
     getLocation().then(loc => { if (loc) setUserLocation(loc); });
   }, [userId]);
 
-  // ── Conversations ────────────────────────────────────────────────────────────
   const openConversation = useCallback(async (convId) => {
     setActiveView('chat');
     if (convId === activeConvId) return;
@@ -114,20 +109,16 @@ export default function App() {
     if (activeConvId === convId) newChat();
   }, [userId, activeConvId, newChat]);
 
-  // ── Location ─────────────────────────────────────────────────────────────────
   const editLocation = useCallback(() => {
     const city = window.prompt('Enter your city for "near me" searches:', userLocation.city || '');
     if (city && city.trim()) {
       const loc = { city: city.trim(), lat: null, lng: null };
-      setStoredLocation(loc);
-      setUserLocation(loc);
+      setStoredLocation(loc); setUserLocation(loc);
     }
   }, [userLocation.city]);
 
-  // ── Profiles ─────────────────────────────────────────────────────────────────
   const switchProfile = useCallback((profileId) => {
-    setActiveProfileId(profileId);
-    newChat();
+    setActiveProfileId(profileId); newChat();
   }, [newChat]);
 
   const saveProfile = useCallback(async (data) => {
@@ -150,141 +141,107 @@ export default function App() {
   }, [userId, activeProfileId]);
 
   const handleSignOut = useCallback(() => {
-    signOut();
-    setUser(null);
+    signOut(); setUser(null);
     setProfiles([]); setConversations([]); setActiveProfileId(null);
-    pendingConvId.current = null;
-    reset();
+    pendingConvId.current = null; reset();
   }, [reset]);
 
-  // ── Not signed in → login gate ───────────────────────────────────────────────
+  const flipTheme = useCallback(() => setTheme(toggleTheme()), []);
+
+  // Let the Tasks / Plans pages start a chat: switch to chat view and send.
+  const askFromView = useCallback((text) => {
+    if (!text || !text.trim()) return;
+    setActiveView('chat');
+    send(text);
+  }, [send]);
+
+  // Reset profile-detail when leaving the profiles view
+  useEffect(() => { if (activeView !== 'profiles') setDetailProfileId(null); }, [activeView]);
+
   if (!user) return <LoginScreen onLogin={setUser} />;
 
-  // ── Profile view-models for the sidebar ──────────────────────────────────────
+  // Sidebar profile view-models
   const profileVMs = profiles.map(p => {
-    const active = activeProfile?.id === p.id;
     const isPet = p.kind === 'pet';
-    const primary = isPet
-      ? (p.species || 'Pet')
-      : (p.relation || (p.is_self ? 'Your own care' : ''));
+    const primary = isPet ? (p.species || 'Pet') : (p.relation || (p.is_self ? 'Your own care' : ''));
     const meta = [primary, p.age ? `${p.age}` : ''].filter(Boolean).join(' · ');
     return {
-      id: p.id,
-      name: p.name,
-      relation: meta,
-      isPet,
-      initials: (p.name || '?').trim().charAt(0).toUpperCase(),
-      photo: p.photo || '',
-      active,
-      canEdit: true,          // everyone (including "You") can be edited
-      canDelete: !p.is_self,  // ...but the self profile can't be deleted
-      onClick: () => switchProfile(p.id),
-      onEdit: () => setModal(p),
-      onDelete: () => removeProfile(p.id),
-      cardStyle: {
-        display: 'flex', alignItems: 'center', gap: '11px', width: '100%',
-        padding: '9px 11px', borderRadius: '13px', cursor: 'pointer',
-        border: active ? `1px solid ${ACCENT}` : '1px solid #E6DFD2',
-        background: active ? '#FFFFFF' : 'transparent',
-        boxShadow: active ? '0 2px 8px rgba(40,30,20,0.05)' : 'none',
-      },
-      avatarStyle: {
-        width: '34px', height: '34px', borderRadius: '50%', flex: '0 0 auto', overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '14px', fontWeight: 700,
-        background: active ? ACCENT : '#EDE7DB', color: active ? '#fff' : '#8A8273',
-      },
-      railAvatarStyle: {
-        width: '38px', height: '38px', borderRadius: '50%', border: 'none', cursor: 'pointer', overflow: 'hidden',
-        fontSize: '14px', fontWeight: 700,
-        background: active ? ACCENT : '#EDE7DB', color: active ? '#fff' : '#8A8273',
-        boxShadow: active ? '0 0 0 3px rgba(28,122,106,0.22)' : 'none',
-      },
+      id: p.id, name: p.name, relation: meta, isPet,
+      initials: (p.name || '?').trim().charAt(0).toUpperCase(), photo: p.photo || '',
+      active: activeProfile?.id === p.id, canEdit: true, canDelete: !p.is_self,
+      onClick: () => switchProfile(p.id), onEdit: () => setModal(p), onDelete: () => removeProfile(p.id),
     };
   });
 
-  const sidebarW = collapsed ? '76px' : '292px';
+  const headerTitle = VIEW_TITLE[activeView] || (activeProfile?.name || '—');
+  const headerKicker = activeView === 'chat' ? 'Managing care for' : 'Viewing';
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", background: '#F6F2EC', color: '#26322F' }}>
-
-      <aside style={{ width: sidebarW, flex: '0 0 auto', background: '#EDE8DF', borderRight: '1px solid #E2DACB', transition: 'width .28s ease', overflow: 'hidden' }}>
+    <div className="flex h-screen w-full overflow-hidden bg-background text-on-surface font-body-md">
+      <aside className="w-[280px] shrink-0 border-r border-outline-variant/60 bg-surface overflow-hidden">
         <Sidebar
-          collapsed={collapsed}
-          onToggle={() => setCollapsed(v => !v)}
-          profiles={profileVMs}
-          onAddProfile={() => setModal('new')}
-          conversations={conversations}
-          activeConvId={activeConvId}
-          onConvClick={openConversation}
-          onConvDelete={removeConversation}
-          onNewChat={newChat}
-          activeView={activeView}
-          onSelectView={setActiveView}
-          user={user}
-          onSignOut={handleSignOut}
-          accent={ACCENT}
+          profiles={profileVMs} onAddProfile={() => setModal('new')}
+          conversations={conversations} activeConvId={activeConvId}
+          onConvClick={openConversation} onConvDelete={removeConversation} onNewChat={newChat}
+          activeView={activeView} onSelectView={setActiveView}
+          user={user} onSignOut={handleSignOut}
         />
       </aside>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <header style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 28px', borderBottom: '1px solid #EAE3D6' }}>
-          {collapsed && (
-            <button onClick={() => setCollapsed(false)} style={{ width: '34px', height: '34px', border: 'none', background: '#EFEAE0', borderRadius: '9px', color: '#6E7872', fontSize: '16px', cursor: 'pointer' }}>☰</button>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '13px', color: '#9A9485' }}>
-              {activeView === 'tasks' ? 'Viewing' : activeView === 'plans' ? 'Viewing' : 'Managing care for'}
-            </div>
-            <div style={{ fontFamily: "'Newsreader', serif", fontSize: '18px', fontWeight: 500, color: '#26322F', lineHeight: 1.1 }}>
-              {activeView === 'tasks' ? 'Tasks & Reminders' : activeView === 'plans' ? 'Workout & Diet Plans' : (activeProfile?.name || '—')}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="h-16 flex justify-between items-center px-6 bg-background/80 backdrop-blur-md border-b border-outline-variant/30 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <Sym name={activeView === 'chat' ? 'person_pin' : 'space_dashboard'} className="text-primary text-[22px]" fill />
+            <div className="min-w-0">
+              <div className="text-[11px] text-on-surface-variant uppercase tracking-wide">{headerKicker}</div>
+              <h2 className="font-title-lg text-[17px] text-on-surface truncate leading-tight">{headerTitle}</h2>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={editLocation}
-              title="Set your location for 'near me' searches"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', background: '#F5F1EB', border: '1px solid #E4DCCE', cursor: 'pointer' }}
-            >
-              <span style={{ fontSize: '13px' }}>📍</span>
-              <span style={{ fontSize: '12px', fontWeight: 500, color: userLocation.city ? '#6E7872' : '#B0A797' }}>
-                {userLocation.city || 'Set location'}
-              </span>
+          <div className="flex items-center gap-2">
+            <button onClick={editLocation} title="Set your location"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface-variant text-[12px] font-medium border border-outline-variant/50 hover:bg-surface-container-high">
+              <Sym name="location_on" className="text-g-red text-[16px]" />
+              {userLocation.city || 'Set location'}
             </button>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '7px 13px', borderRadius: '999px', background: '#EDF3F0', border: '1px solid #DCE8E2' }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#2E8B6F' }} />
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#1C7A6A' }}>3 integrations connected</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-g-green-tint text-g-green-text text-[12px] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-g-green animate-pulse" /> Connected
             </div>
+            <button onClick={flipTheme} title="Toggle theme"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+              <Sym name={theme === 'dark' ? 'light_mode' : 'dark_mode'} className="text-[20px]" />
+            </button>
           </div>
         </header>
 
-        {activeView === 'tasks' ? (
-          <TasksView userId={userId} />
-        ) : activeView === 'plans' ? (
-          <PlansView userId={userId} />
-        ) : loadingConv ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9A9485', fontSize: '14px' }}>
-            Loading conversation...
-          </div>
-        ) : (
-          <ChatThread
-            messages={messages}
-            input={input}
-            setInput={setInput}
-            send={send}
-            onKey={onKey}
-            msgVM={msgVM}
-            accent={ACCENT}
-          />
-        )}
+        {/* Content */}
+        {activeView === 'tasks' ? <TasksView userId={userId} onAsk={askFromView} />
+          : activeView === 'plans' ? <PlansView userId={userId} onAsk={askFromView} />
+          : activeView === 'reader' ? <ReaderView userId={userId} />
+          : activeView === 'profiles' ? (
+              detailProfileId ? (
+                <ProfileDetailView userId={userId}
+                  profile={profiles.find(p => p.id === detailProfileId)}
+                  onBack={() => setDetailProfileId(null)}
+                  onEdit={(p) => setModal(p)}
+                  onUseForChat={(id) => { switchProfile(id); }} />
+              ) : (
+                <ProfilesView profiles={profiles} activeProfileId={activeProfile?.id}
+                  onSelect={setDetailProfileId} onAdd={() => setModal('new')} onEdit={(p) => setModal(p)} onDelete={removeProfile} />
+              )
+            )
+          : activeView === 'connectors' ? <ConnectorsView />
+          : activeView === 'settings' ? (
+              <SettingsView user={user} location={userLocation} onEditLocation={editLocation} onSignOut={handleSignOut} />
+            )
+          : loadingConv ? (
+              <div className="flex-1 flex items-center justify-center text-on-surface-variant text-sm">Loading conversation…</div>
+            )
+          : <ChatThread messages={messages} input={input} setInput={setInput} send={send} onKey={onKey} msgVM={msgVM} />}
       </div>
 
       {modal && (
-        <ProfileModal
-          initial={modal === 'new' ? null : modal}
-          onClose={() => setModal(null)}
-          onSave={saveProfile}
-        />
+        <ProfileModal initial={modal === 'new' ? null : modal} onClose={() => setModal(null)} onSave={saveProfile} />
       )}
     </div>
   );

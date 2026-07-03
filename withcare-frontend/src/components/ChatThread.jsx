@@ -1,112 +1,120 @@
-// withcare-frontend/src/components/ChatThread.jsx
 import React, { useRef, useEffect } from 'react';
 import AgentFlowAnimation from './AgentFlowAnimation';
 import CarePlanCard from './CarePlanCard';
+import PlanCards, { hasPlanStructure } from './PlanCards';
 import { SUGGESTIONS } from '../constants/agents';
 
-export default function ChatThread({ messages, input, setInput, send, onKey, msgVM, accent }) {
+function Sym({ name, className = '', fill = false }) {
+  return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
+}
+
+const CHIP_ICON = ['medical_services', 'visibility', 'description', 'fitness_center'];
+
+function AiAvatar({ size = 40 }) {
+  return (
+    <div className="rounded-full intelligence-gradient shrink-0 flex items-center justify-center text-white shadow-md shadow-primary/10"
+         style={{ width: size, height: size }}>
+      <Sym name="auto_awesome" className="text-[20px]" fill />
+    </div>
+  );
+}
+
+export default function ChatThread({ messages, input, setInput, send, onKey, msgVM }) {
   const threadRef = useRef(null);
-
-  useEffect(() => {
-    if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
-  }, [messages]);
-
+  useEffect(() => { if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight; }, [messages]);
   const noMessages = messages.length === 0;
 
-  const sendBtnStyle = {
-    width: '40px', height: '40px', borderRadius: '13px', border: 'none', cursor: 'pointer',
-    background: accent, color: '#fff', fontSize: '19px', flex: '0 0 auto',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  };
-
   return (
-    <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#F6F2EC', overflow: 'hidden' }}>
+    <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden relative">
+      <div ref={threadRef} className="flex-1 overflow-y-auto px-6 pt-6 pb-40">
 
-      {/* Thread scroll area */}
-      <div ref={threadRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
-        <div style={{ maxWidth: '780px', margin: '0 auto', padding: '28px 28px 40px' }}>
-
-          {/* Welcome / empty state */}
-          {noMessages && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '64px 12px 24px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: accent, color: '#fff', fontFamily: "'Newsreader', serif", fontSize: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>w</div>
-              <div style={{ fontFamily: "'Newsreader', serif", fontSize: '30px', fontWeight: 500, letterSpacing: '-0.01em', marginTop: '22px', color: '#26322F' }}>How can I help with your care today?</div>
-              <div style={{ fontSize: '15px', color: '#8C9087', marginTop: '10px', maxWidth: '440px', lineHeight: 1.5 }}>Ask about schemes, insurance, nearby facilities, affordable medicines, or scheduling — I&rsquo;ll handle the rest.</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center', marginTop: '26px', maxWidth: '560px' }}>
-                {SUGGESTIONS.map((s, i) => (
-                  <button key={i} onClick={() => send(s.q)} style={{ padding: '11px 16px', borderRadius: '999px', border: '1px solid #E0D8C9', background: '#FBF9F4', color: '#4A554F', fontSize: '13.5px', cursor: 'pointer' }}>{s.label}</button>
-                ))}
-              </div>
+        {/* Empty state */}
+        {noMessages && (
+          <div className="max-w-3xl mx-auto flex flex-col items-center text-center space-y-5 pt-16">
+            <div className="w-20 h-20 rounded-[24px] intelligence-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+              <Sym name="auto_awesome" className="text-white text-[40px]" fill />
             </div>
-          )}
+            <h3 className="font-headline-lg text-[28px] text-on-surface">How can I help with your care today?</h3>
+            <p className="text-[15px] text-on-surface-variant max-w-md">Ask about schemes, insurance, nearby facilities, affordable medicines, reminders, or plans — I’ll handle the rest.</p>
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              {SUGGESTIONS.map((s, i) => (
+                <button key={i} onClick={() => send(s.q)}
+                  className="px-5 py-2.5 rounded-full border border-outline-variant bg-surface-container-lowest hover:bg-surface-container transition-colors text-sm font-medium flex items-center gap-2 shadow-sm">
+                  <Sym name={CHIP_ICON[i % CHIP_ICON.length]} className="text-primary text-[18px]" />
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-          {/* Message list */}
+        {/* Messages */}
+        <div className="max-w-3xl mx-auto space-y-7 mt-2">
           {messages.map(m => {
-            const vm = msgVM(m, accent);
+            const vm = msgVM(m);
+            if (vm.isUser) {
+              return (
+                <div key={vm.id} className="flex justify-end">
+                  <div className="max-w-[80%] bg-secondary-fixed text-on-secondary-fixed px-5 py-3 rounded-action rounded-tr-md shadow-sm">
+                    <p className="text-[15px] leading-relaxed">{vm.text}</p>
+                  </div>
+                </div>
+              );
+            }
             return (
-              <div key={vm.id} style={{ marginBottom: '28px' }}>
+              <div key={vm.id}>
+                {vm.animating && <AgentFlowAnimation orch={vm.orch} subs={vm.subs} />}
 
-                {/* User message */}
-                {vm.isUser && (
-                  <div style={{ maxWidth: '560px', marginLeft: 'auto', background: '#E7F0EB', border: '1px solid #DBE8E1', borderRadius: '18px 18px 6px 18px', padding: '13px 17px', fontSize: '15px', lineHeight: 1.5, color: '#2A3833' }}>
-                    {vm.text}
+                {vm.isClarify && (
+                  <div className="flex gap-4">
+                    <AiAvatar />
+                    {hasPlanStructure(vm.intro)
+                      ? <div className="flex-1 min-w-0"><PlanCards text={vm.intro} variant="accordion" /></div>
+                      : <div className="flex-1 max-w-[85%] bg-surface-container-lowest border border-outline-variant rounded-card rounded-tl-md px-5 py-3.5 text-[15px] leading-relaxed text-on-surface">
+                          {vm.intro}
+                        </div>}
                   </div>
                 )}
 
-                {/* Assistant message */}
-                {vm.isAssistant && (
-                  <div>
-                    {/* LIVE: animating agent flow */}
-                    {vm.animating && <AgentFlowAnimation orch={vm.orch} subs={vm.subs} />}
+                {vm.loading && (
+                  <div className="flex gap-4 items-center">
+                    <AiAvatar />
+                    <div className="flex items-center gap-2 text-primary text-sm">
+                      <div className="w-3.5 h-3.5 rounded-full intelligence-gradient animate-pulse" />
+                      <span className="ai-shimmer px-4 py-1 rounded-full border border-primary/20 bg-primary/5">Thinking…</span>
+                    </div>
+                  </div>
+                )}
 
-                    {/* CLARIFY: plain question bubble */}
-                    {vm.isClarify && (
-                      <div style={{ display: 'flex', gap: '13px', alignItems: 'flex-start' }}>
-                        <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#1C7A6A', color: '#fff', fontFamily: "'Newsreader', serif", fontSize: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>w</div>
-                        <div style={{ background: '#fff', border: '1px solid #ECE5D9', borderRadius: '6px 18px 18px 18px', padding: '14px 18px', fontSize: '15px', lineHeight: 1.6, color: '#2E3A35', maxWidth: '620px' }}>
-                          {vm.intro}
+                {vm.showCard && (
+                  <div className="flex gap-4">
+                    <AiAvatar />
+                    <div className="flex-1 min-w-0 space-y-3">
+                      {vm.intro && (hasPlanStructure(vm.intro)
+                        ? <PlanCards text={vm.intro} variant="accordion" />
+                        : <div className="text-[15px] leading-relaxed text-on-surface">{vm.intro}</div>)}
+                      {/* trace pill */}
+                      <button onClick={vm.toggleExpand}
+                        className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-outline-variant bg-surface-container-lowest hover:bg-surface-container">
+                        <span className="flex">{vm.traceDots.map((d, i) => (
+                          <span key={i} className="w-6 h-6 -ml-1.5 first:ml-0 rounded-full intelligence-gradient text-white text-[9px] font-bold flex items-center justify-center border-2 border-surface">{d.initials}</span>
+                        ))}</span>
+                        <span className="text-[12px] font-semibold text-on-surface-variant">{vm.summaryLabel}</span>
+                        <span className="text-[11px] text-on-surface-variant">{vm.expandIcon}</span>
+                      </button>
+                      {vm.expanded && (
+                        <div className="p-3.5 rounded-card bg-surface-container-lowest border border-outline-variant space-y-2">
+                          {vm.traceLines.map((t, i) => (
+                            <div key={i} className="flex items-center gap-2.5 text-[13px]">
+                              <span className="w-6 h-6 rounded-full bg-primary-fixed text-primary text-[10px] font-bold flex items-center justify-center">{t.initials}</span>
+                              <span className="font-semibold text-on-surface">{t.name}</span>
+                              <span className="text-on-surface-variant">→ {t.status}</span>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    )}
-
-                    {/* LOADING: thinking dots */}
-                    {vm.loading && (
-                      <div style={{ display: 'flex', gap: '13px', alignItems: 'center' }}>
-                        <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#1C7A6A', color: '#fff', fontFamily: "'Newsreader', serif", fontSize: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>w</div>
-                        <div style={{ fontSize: '22px', color: '#1C7A6A', letterSpacing: '3px' }}>···</div>
-                      </div>
-                    )}
-
-                    {/* DONE: collapsed trace + care plan card */}
-                    {vm.showCard && (
-                      <div>
-                        {/* Trace summary pill */}
-                        <button onClick={vm.toggleExpand} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '7px 13px 7px 9px', borderRadius: '999px', border: '1px solid #E6DFD2', background: '#FBF9F4', cursor: 'pointer', marginBottom: '14px' }}>
-                          <span style={{ display: 'inline-flex' }}>
-                            {vm.traceDots.map((d, i) => (
-                              <span key={i} style={d.style}>{d.initials}</span>
-                            ))}
-                          </span>
-                          <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#5A655F' }}>{vm.summaryLabel}</span>
-                          <span style={{ fontSize: '11px', color: '#A39C8C' }}>{vm.expandIcon}</span>
-                        </button>
-
-                        {/* Expanded trace detail */}
-                        {vm.expanded && (
-                          <div style={{ margin: '-4px 0 16px', padding: '14px 16px', borderRadius: '14px', background: '#FBF9F4', border: '1px solid #EAE3D6', display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                            {vm.traceLines.map((t, i) => (
-                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
-                                <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#EEF4F1', color: '#1C7A6A', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{t.initials}</span>
-                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#2C3833' }}>{t.name}</span>
-                                <span style={{ fontSize: '12.5px', color: '#7C8479' }}>&rarr; {t.status}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <CarePlanCard msg={vm} />
-                      </div>
-                    )}
+                      )}
+                      <CarePlanCard msg={vm} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -116,32 +124,30 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
       </div>
 
       {/* Composer */}
-      <div style={{ padding: '8px 28px 20px' }}>
-        <div style={{ maxWidth: '780px', margin: '0 auto' }}>
-          {/* Suggestion chips (shown in composer area too) */}
+      <div className="absolute bottom-0 left-0 w-full px-6 pb-5 pt-8 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+        <div className="max-w-3xl mx-auto pointer-events-auto">
           {!noMessages && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '11px' }}>
+            <div className="flex flex-wrap gap-2 mb-3 justify-center">
               {SUGGESTIONS.map((s, i) => (
-                <button key={i} onClick={() => send(s.q)} style={{ padding: '8px 14px', borderRadius: '999px', border: '1px solid #E4DCCE', background: '#FBF9F4', color: '#5A655F', fontSize: '12.5px', cursor: 'pointer' }}>{s.label}</button>
+                <button key={i} onClick={() => send(s.q)}
+                  className="px-3.5 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-[12.5px] text-on-surface-variant transition-colors">
+                  {s.label}
+                </button>
               ))}
             </div>
           )}
-
-          {/* Input box */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', background: '#fff', border: '1px solid #E2DACB', borderRadius: '18px', padding: '8px 8px 8px 18px', boxShadow: '0 4px 20px rgba(40,30,20,0.05)' }}>
-            <input
-              value={input}
-              onChange={setInput}
-              onKeyDown={onKey}
-              placeholder="Describe what you need help with…"
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '15px', color: '#26322F', padding: '9px 0' }}
-            />
-            <button onClick={() => send()} style={sendBtnStyle}>↑</button>
+          <div className="flex items-end gap-3">
+            <div className="flex-1 relative">
+              <input value={input} onChange={setInput} onKeyDown={onKey}
+                placeholder="Describe what you need help with…"
+                className="w-full bg-surface-container-lowest border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-action px-6 py-4 shadow-xl text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50" />
+            </div>
+            <button onClick={() => send()}
+              className="w-14 h-14 rounded-full intelligence-gradient text-white flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-transform shrink-0">
+              <Sym name="send" className="text-[26px]" fill />
+            </button>
           </div>
-
-          <div style={{ textAlign: 'center', fontSize: '11.5px', color: '#A8A293', marginTop: '9px' }}>
-            Withcare can make mistakes. Please verify important medical and financial details.
-          </div>
+          <p className="text-center text-[11px] text-on-surface-variant mt-3">WithCare can make mistakes. Please verify important medical and financial details.</p>
         </div>
       </div>
     </main>

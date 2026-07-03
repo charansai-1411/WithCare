@@ -10,6 +10,8 @@ class FamilyMember(BaseModel):
     email: str = ""        # Gmail — used to sync appointment to their calendar & share the plan
     age: int | None = None
     gender: str = ""
+    weight: float | None = None   # kg — used for diet/workout calorie & load tailoring
+    height: float | None = None   # cm — with weight, lets plans reason about BMI
     conditions: str = ""   # known health conditions/problems for tailoring guidance
     notes: str = ""
     calendar_id: str | None = None  # Google Calendar ID; None = caregiver's primary

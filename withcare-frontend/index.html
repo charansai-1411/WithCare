@@ -4,8 +4,145 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WithCare</title>
+    <title>WithCare — AI Healthcare Assistant</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- Set theme before paint to avoid a flash -->
+    <script>
+      try {
+        var t = localStorage.getItem('withcare-theme');
+        if (t === 'dark' || (!t && window.matchMedia && matchMedia('(prefers-color-scheme:dark)').matches))
+          document.documentElement.classList.add('dark');
+      } catch (e) {}
+    </script>
+
+    <!-- WithCare Material 3 / Gemini design system (from Stitch + Claude blend) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+    <script>
+      const c = (v) => `rgb(var(--${v}) / <alpha-value>)`;
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              background: c('background'),
+              surface: c('surface'),
+              'surface-bright': c('surface-bright'),
+              'surface-dim': c('surface-dim'),
+              'surface-container-lowest': c('surface-container-lowest'),
+              'surface-container-low': c('surface-container-low'),
+              'surface-container': c('surface-container'),
+              'surface-container-high': c('surface-container-high'),
+              'surface-container-highest': c('surface-container-highest'),
+              'surface-variant': c('surface-variant'),
+              'on-surface': c('on-surface'),
+              'on-surface-variant': c('on-surface-variant'),
+              'inverse-surface': c('inverse-surface'),
+              'inverse-on-surface': c('inverse-on-surface'),
+              outline: c('outline'),
+              'outline-variant': c('outline-variant'),
+              primary: c('primary'),
+              'on-primary': c('on-primary'),
+              'primary-container': c('primary-container'),
+              'on-primary-container': c('on-primary-container'),
+              'primary-fixed': c('primary-fixed'),
+              'on-primary-fixed': c('on-primary-fixed'),
+              'inverse-primary': c('inverse-primary'),
+              secondary: c('secondary'),
+              'on-secondary': c('on-secondary'),
+              'secondary-container': c('secondary-container'),
+              'on-secondary-container': c('on-secondary-container'),
+              'secondary-fixed': c('secondary-fixed'),
+              'on-secondary-fixed': c('on-secondary-fixed'),
+              tertiary: c('tertiary'),
+              'on-tertiary': c('on-tertiary'),
+              'tertiary-container': c('tertiary-container'),
+              'on-tertiary-container': c('on-tertiary-container'),
+              'tertiary-fixed': c('tertiary-fixed'),
+              'on-tertiary-fixed': c('on-tertiary-fixed'),
+              error: c('error'),
+              'on-error': c('on-error'),
+              'error-container': c('error-container'),
+              'on-error-container': c('on-error-container'),
+              // Google product colors (semantic, adapt in dark)
+              'g-blue': c('g-blue'),
+              'g-red': c('g-red'),
+              'g-green': c('g-green'),
+              'g-yellow': c('g-yellow'),
+              'g-green-text': c('g-green-text'),
+              'g-green-tint': c('g-green-tint'),
+              scrim: c('scrim'),
+            },
+            borderRadius: { card: '16px', action: '24px' },
+            spacing: { unit: '8px', gutter: '16px' },
+            fontFamily: {
+              'body-md': ['Inter', 'system-ui', 'sans-serif'],
+              'body-lg': ['Inter', 'system-ui', 'sans-serif'],
+              'label-md': ['Inter', 'system-ui', 'sans-serif'],
+              'title-lg': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              'headline-lg': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              'display-lg': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              'button-text': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* ── M3 tokens as RGB triplets: light (default) ── */
+      :root {
+        --background: 248 249 250; --surface: 248 249 250; --surface-bright: 248 249 250; --surface-dim: 217 218 219;
+        --surface-container-lowest: 255 255 255; --surface-container-low: 243 244 245; --surface-container: 237 238 239;
+        --surface-container-high: 231 232 233; --surface-container-highest: 225 227 228; --surface-variant: 225 227 228;
+        --on-surface: 25 28 29; --on-surface-variant: 65 71 84; --inverse-surface: 46 49 50; --inverse-on-surface: 240 241 242;
+        --outline: 114 119 133; --outline-variant: 193 198 214;
+        --primary: 26 115 232; --on-primary: 255 255 255; --primary-container: 26 115 232; --on-primary-container: 255 255 255;
+        --primary-fixed: 216 226 255; --on-primary-fixed: 0 27 63; --inverse-primary: 173 199 255;
+        --secondary: 115 75 161; --on-secondary: 255 255 255; --secondary-container: 204 160 254; --on-secondary-container: 88 49 134;
+        --secondary-fixed: 239 219 255; --on-secondary-fixed: 42 0 83;
+        --tertiary: 162 59 71; --on-tertiary: 255 255 255; --tertiary-container: 193 83 94; --on-tertiary-container: 255 255 255;
+        --tertiary-fixed: 255 218 219; --on-tertiary-fixed: 64 0 13;
+        --error: 186 26 26; --on-error: 255 255 255; --error-container: 255 218 214; --on-error-container: 147 0 10;
+        --g-blue: 26 115 232; --g-red: 234 67 53; --g-green: 52 168 83; --g-yellow: 251 188 4;
+        --g-green-text: 24 128 56; --g-green-tint: 230 244 234;
+        --scrim: 0 0 0;
+        --scrollbar: 217 218 219;
+      }
+      /* ── dark (Google Workspace night) ── */
+      html.dark {
+        --background: 32 33 36; --surface: 32 33 36; --surface-bright: 55 56 58; --surface-dim: 20 21 23;
+        --surface-container-lowest: 45 46 48; --surface-container-low: 40 42 44; --surface-container: 53 54 58;
+        --surface-container-high: 60 64 67; --surface-container-highest: 68 70 73; --surface-variant: 60 64 67;
+        --on-surface: 232 234 237; --on-surface-variant: 154 160 166; --inverse-surface: 232 234 237; --inverse-on-surface: 32 33 36;
+        --outline: 128 134 139; --outline-variant: 60 64 67;
+        --primary: 138 180 248; --on-primary: 32 33 36; --primary-container: 138 180 248; --on-primary-container: 32 33 36;
+        --primary-fixed: 26 58 92; --on-primary-fixed: 216 226 255; --inverse-primary: 26 115 232;
+        --secondary: 204 160 254; --on-secondary: 42 0 83; --secondary-container: 88 49 134; --on-secondary-container: 239 219 255;
+        --secondary-fixed: 74 47 107; --on-secondary-fixed: 239 219 255;
+        --tertiary: 242 139 130; --on-tertiary: 32 33 36; --tertiary-container: 140 29 24; --on-tertiary-container: 255 218 219;
+        --tertiary-fixed: 92 26 34; --on-tertiary-fixed: 255 218 219;
+        --error: 242 184 181; --on-error: 96 0 5; --error-container: 140 29 24; --on-error-container: 249 222 220;
+        --g-blue: 138 180 248; --g-red: 242 139 130; --g-green: 129 201 149; --g-yellow: 253 214 99;
+        --g-green-text: 129 201 149; --g-green-tint: 30 45 36;
+        --scrim: 0 0 0;
+        --scrollbar: 60 64 67;
+      }
+    </style>
+    <style type="text/tailwindcss">
+      body { font-family: 'Inter', system-ui, sans-serif; }
+      .intelligence-gradient { background: linear-gradient(135deg, #1a73e8 0%, #734ba1 50%, #a23b47 100%); }
+      .text-gradient { background: linear-gradient(120deg, #1a73e8, #734ba1); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .ai-shimmer { background: linear-gradient(90deg, transparent, rgba(26,115,232,0.06), transparent); background-size: 200% 100%; animation: shimmer 2s infinite linear; }
+      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+      .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; user-select: none; }
+      .msym-fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-thumb { background-color: rgb(var(--scrollbar)); border-radius: 10px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

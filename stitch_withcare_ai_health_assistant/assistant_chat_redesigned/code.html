@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WithCare | AI Healthcare Assistant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#004493",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#40000d",
+                    "secondary-fixed-dim": "#dab9ff",
+                    "on-primary-fixed": "#001a41",
+                    "background": "#f8f9fa",
+                    "tertiary-container": "#c1535e",
+                    "on-surface": "#191c1d",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "surface": "#f8f9fa",
+                    "surface-bright": "#f8f9fa",
+                    "secondary": "#734ba1",
+                    "on-tertiary-container": "#ffffff",
+                    "tertiary-fixed": "#ffdadb",
+                    "surface-variant": "#e1e3e4",
+                    "surface-tint": "#005bc0",
+                    "inverse-primary": "#adc7ff",
+                    "on-secondary-container": "#583186",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#c1c6d6",
+                    "surface-container": "#edeeef",
+                    "on-secondary-fixed": "#2a0053",
+                    "tertiary-fixed-dim": "#ffb2b6",
+                    "secondary-container": "#cca0fe",
+                    "on-surface-variant": "#414754",
+                    "surface-container-high": "#e7e8e9",
+                    "surface-dim": "#d9dadb",
+                    "surface-container-low": "#f3f4f5",
+                    "secondary-fixed": "#efdbff",
+                    "primary-container": "#1a73e8",
+                    "surface-container-lowest": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#ffffff",
+                    "primary-fixed": "#d8e2ff",
+                    "on-secondary": "#ffffff",
+                    "outline": "#727785",
+                    "on-tertiary-fixed-variant": "#832331",
+                    "tertiary": "#a23b47",
+                    "on-secondary-fixed-variant": "#5a3287",
+                    "inverse-on-surface": "#f0f1f2",
+                    "primary-fixed-dim": "#adc7ff",
+                    "primary": "#1a73e8",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-background": "#191c1d",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#2e3132"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px",
+                    "card": "16px",
+                    "action": "24px"
+            },
+            "spacing": {
+                    "container-margin-mobile": "16px",
+                    "container-margin-desktop": "24px",
+                    "unit": "8px",
+                    "sidebar-width": "280px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-md": ["inter"],
+                    "body-lg": ["inter"],
+                    "label-md": ["inter"],
+                    "title-lg": ["plusJakartaSans"],
+                    "headline-lg": ["plusJakartaSans"],
+                    "display-lg": ["plusJakartaSans"],
+                    "button-text": ["plusJakartaSans"],
+                    "headline-lg-mobile": ["plusJakartaSans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .intelligence-gradient {
+            background: linear-gradient(135deg, #1a73e8 0%, #734ba1 50%, #a23b47 100%);
+        }
+        .ai-shimmer {
+            background: linear-gradient(90deg, transparent, rgba(26, 115, 232, 0.05), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #e1e3e4;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden">
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 h-full w-[sidebar-width] border-r border-outline-variant bg-surface flex flex-col p-4 z-50">
+<div class="mb-8 px-2">
+<h1 class="font-display-lg text-[24px] bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+                WithCare
+            </h1>
+<p class="text-[12px] text-on-surface-variant font-medium tracking-wide uppercase">AI Healthcare Assistant</p>
+</div>
+<button class="flex items-center justify-center gap-2 w-full py-4 px-6 rounded-full bg-secondary-fixed text-on-secondary-fixed font-button-text hover:bg-secondary-container transition-all active:scale-95 mb-6">
+<span class="material-symbols-outlined">add</span>
+            New conversation
+        </button>
+<div class="flex-1 overflow-y-auto space-y-1">
+<p class="text-label-md text-on-surface-variant px-4 py-2">Recent</p>
+<div class="flex items-center gap-3 px-4 py-3 rounded-full bg-secondary-container text-on-secondary-container cursor-pointer">
+<span class="material-symbols-outlined">chat_spark</span>
+<span class="truncate font-semibold">Amma</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-full cursor-pointer transition-colors">
+<span class="material-symbols-outlined">assignment</span>
+<span class="truncate">Medication Reminder</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-full cursor-pointer transition-colors">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="truncate">Morning Walk</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-full cursor-pointer transition-colors">
+<span class="material-symbols-outlined">hub</span>
+<span class="truncate">Insurance Sync</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-full cursor-pointer transition-colors">
+<span class="material-symbols-outlined">groups</span>
+<span class="truncate">Profiles</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-full cursor-pointer transition-colors">
+<span class="material-symbols-outlined">link</span>
+<span class="truncate">Connectors</span>
+</div>
+</div>
+<div class="mt-auto pt-4 border-t border-outline-variant space-y-1">
+<div class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low rounded-full cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-4 rounded-xl bg-surface-container-low mt-2">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-white font-bold">
+                    RK
+                </div>
+<div class="flex-1 overflow-hidden">
+<p class="font-semibold text-sm truncate">Rahul Kumar</p>
+<p class="text-xs text-on-surface-variant">Primary Caregiver</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">unfold_more</span>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-[sidebar-width] h-screen flex flex-col relative bg-background">
+<!-- Slim Header -->
+<header class="h-14 flex justify-between items-center px-container-margin-desktop bg-background/80 backdrop-blur-md sticky top-0 z-40 border-b border-outline-variant/30">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">person_pin</span>
+<h2 class="text-on-surface text-sm">Managing care for <span class="font-bold">Amma</span></h2>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant text-[12px] font-medium border border-outline-variant/50">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+                    Hyderabad
+                </div>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-700 text-[12px] font-semibold border border-green-100">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    Connected
+                </div>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-full">
+<span class="material-symbols-outlined text-[20px]">wifi</span>
+</button>
+</div>
+</header>
+<!-- Chat Area -->
+<section class="flex-1 overflow-y-auto chat-container p-container-margin-desktop space-y-8 pb-32">
+<!-- Empty State / AI Spark -->
+<div class="max-w-3xl mx-auto flex flex-col items-center text-center space-y-6 pt-12">
+<div class="w-20 h-20 rounded-[24px] intelligence-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-white text-[40px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<h3 class="font-headline-lg text-on-surface">How can I help with your care today?</h3>
+<div class="flex flex-wrap justify-center gap-3">
+<button class="px-5 py-2.5 rounded-full border border-outline-variant bg-white hover:bg-surface-container transition-colors text-sm font-medium flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">medical_services</span>
+                        Find affordable medicines
+                    </button>
+<button class="px-5 py-2.5 rounded-full border border-outline-variant bg-white hover:bg-surface-container transition-colors text-sm font-medium flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-tertiary text-[18px]">visibility</span>
+                        Schedule an eye check-up
+                    </button>
+<button class="px-5 py-2.5 rounded-full border border-outline-variant bg-white hover:bg-surface-container transition-colors text-sm font-medium flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]">description</span>
+                        Check claim status
+                    </button>
+</div>
+</div>
+<!-- Divider -->
+<div class="flex items-center gap-4 max-w-3xl mx-auto">
+<hr class="flex-1 border-outline-variant"/>
+<span class="text-[10px] font-bold text-outline uppercase tracking-widest">Active Discussion</span>
+<hr class="flex-1 border-outline-variant"/>
+</div>
+<!-- Chat Interaction -->
+<div class="max-w-4xl mx-auto space-y-6">
+<!-- User Message -->
+<div class="flex justify-end">
+<div class="max-w-[80%] bg-secondary-fixed text-on-secondary-fixed px-5 py-3 rounded-action rounded-tr-none shadow-sm">
+<p class="font-body-md">Amma is having some irritation in her eyes. Can you recommend a good specialist nearby in Banjara Hills?</p>
+</div>
+</div>
+<!-- Assistant Response -->
+<div class="flex gap-4">
+<div class="w-10 h-10 rounded-full intelligence-gradient shrink-0 flex items-center justify-center text-white shadow-md shadow-primary/10">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="flex-1 space-y-4">
+<div class="max-w-[85%] text-on-surface leading-relaxed">
+                            I've found 3 top-rated ophthalmologists near Banjara Hills that specialize in geriatric eye care. Based on your insurance (Star Health), these are the best options for cashless treatment.
+                        </div>
+<!-- Hospital Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-white border border-outline-variant rounded-card p-4 hover:shadow-md transition-shadow cursor-pointer group relative">
+<div class="flex justify-between items-start mb-3">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden border border-outline-variant/30">
+<img alt="LVPEI Eye Institute" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjr2bhGW8rZA7t0UDgObblFlfuGeEnhFAZ9rt-OViqOQrcDFAd_bBQj7bIDxeRoRkHMW4m-QwWn-ZDXBqsDYgzjXYq25eemZD9XnRhZ_OQIBBDiiXD7Wfr9bMS6NzS9ClAxboxAwJDbvRdAWsI54D-qPyPQHTPjKX076qWWG8nn54yPuOcg70fOpjnCsZqVKt2GjCCaoocLTpkrsFYPBq5mQp-pqvdB6wwHZqyjL0MxIen5NVstjrVu79aU-zKgVWmg_uuypjY-R8"/>
+</div>
+<span class="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-green-100">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">star</span> 4.8
+                                    </span>
+</div>
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">LVPEI Eye Institute</h4>
+<p class="text-xs text-on-surface-variant mb-2">1.2 km away • Banjara Hills</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 rounded bg-surface-container text-[10px] font-bold text-on-surface-variant">CASHLESS AVAILABLE</span>
+<span class="material-symbols-outlined text-primary text-[18px] ml-auto">map</span>
+</div>
+</div>
+<div class="bg-white border border-outline-variant rounded-card p-4 hover:shadow-md transition-shadow cursor-pointer group relative">
+<div class="flex justify-between items-start mb-3">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden border border-outline-variant/30">
+<img alt="Maxivision Eye Hospital" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXSZQphrpRdO2IRZYYh3l9BZ_fMBmbD2sNhPFa4Qi7vLWmweEbFPAKrJAyTO86xHu-XlxaYcF6dLRV_ef0wswgWDqMOeuNHbVaiXudU4HPmC2QnpV1UcdUFFmiKsZBOpBSNrHgIgpfc6RDnNaNDz4tDH7_sbs5n5JupHQ0OaY_-cJ7PF1xOwHm9HmSJ5xm8K958siOD7zeC-WuQZ-giZvgTS2IZkpFbdE3fsfBs8Pm_1fB1efS7ceVV9YzwEtbBFTRUqVCeYDGuww"/>
+</div>
+<span class="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-green-100">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">star</span> 4.5
+                                    </span>
+</div>
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">Maxivision Eye Hospital</h4>
+<p class="text-xs text-on-surface-variant mb-2">2.4 km away • Somajiguda</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 rounded bg-surface-container text-[10px] font-bold text-on-surface-variant">MAPS SOURCE</span>
+<span class="material-symbols-outlined text-primary text-[18px] ml-auto">directions_car</span>
+</div>
+</div>
+</div>
+<!-- Appointment Confirmation Card -->
+<div class="max-w-[400px] bg-tertiary-fixed text-on-tertiary-fixed rounded-card overflow-hidden border border-tertiary-container shadow-md">
+<div class="p-4 flex gap-4">
+<div class="w-12 h-12 bg-white rounded-xl flex flex-col items-center justify-center shrink-0 shadow-sm border border-tertiary-container/30">
+<span class="text-[10px] font-bold text-tertiary uppercase">OCT</span>
+<span class="text-xl font-bold text-on-surface">24</span>
+</div>
+<div>
+<p class="text-[10px] font-bold opacity-70 uppercase tracking-tighter">Proposed Appointment</p>
+<h5 class="font-bold text-lg">Dr. Sunita Rao</h5>
+<p class="text-sm opacity-80">Thursday • 10:30 AM</p>
+</div>
+</div>
+<div class="bg-white/50 p-3 flex gap-2 border-t border-tertiary-container/20">
+<button class="flex-1 py-2.5 bg-tertiary text-white rounded-xl font-button-text hover:bg-tertiary-container transition-all shadow-sm">Yes, schedule it</button>
+<button class="flex-1 py-2.5 border border-tertiary text-tertiary rounded-xl font-button-text hover:bg-white/80 transition-all">Not now</button>
+</div>
+</div>
+<!-- Thinking State Shimmer -->
+<div class="flex items-center gap-2 text-primary font-medium text-sm mt-4">
+<div class="w-4 h-4 rounded-full intelligence-gradient animate-pulse"></div>
+<span class="ai-shimmer px-4 py-1 rounded-full border border-primary/20 bg-primary/5">AI is syncing her latest reports...</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Input Area -->
+<footer class="absolute bottom-0 left-0 w-full p-container-margin-desktop bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+<div class="max-w-4xl mx-auto flex items-end gap-4 pointer-events-auto">
+<div class="flex-1 relative">
+<textarea class="w-full bg-white border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-action px-6 py-4 pr-16 shadow-xl text-on-surface resize-none transition-all placeholder:text-on-surface-variant/50 max-h-[200px]" placeholder="Ask anything about health, reports or insurance..." rows="1"></textarea>
+<div class="absolute right-4 bottom-3.5 flex gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">mic</span>
+</button>
+</div>
+</div>
+<button class="w-14 h-14 rounded-full intelligence-gradient text-white flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+<p class="text-center text-[11px] text-on-surface-variant mt-3">WithCare can make mistakes. Verify important medical information with a doctor.</p>
+</footer>
+</main>
+<script>
+        // Textarea auto-resize logic
+        const tx = document.getElementsByTagName("textarea");
+        for (let i = 0; i < tx.length; i++) {
+            tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px;overflow-y:hidden;");
+            tx[i].addEventListener("input", function() {
+                this.style.height = 0;
+                this.style.height = (this.scrollHeight) + "px";
+            }, false);
+        }
+    </script>
+</body></html>

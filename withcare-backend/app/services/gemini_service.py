@@ -133,10 +133,14 @@ async def generate_text(
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
                 temperature=0.3,
-                max_output_tokens=1024,
+                # Gemini 2.5 "thinking" tokens count against max_output_tokens; with thinking on
+                # and a small cap the visible answer gets truncated (a 7-day plan came back as just
+                # the intro sentence). Disable thinking and give the answer real room.
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                max_output_tokens=4096,
             ),
         )
-        return response.text.strip()
+        return (response.text or "").strip()
 
     except Exception as e:
         logger.error(f"Gemini generate_text failed: {e}")

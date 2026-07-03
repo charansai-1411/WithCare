@@ -139,6 +139,10 @@ def get_profile_memory(profile_id: str | None) -> str:
         head += f", {p['age']}"
     if p.get("gender"):
         head += f" {p['gender']}"
+    if p.get("weight"):
+        head += f", {p['weight']}kg"
+    if p.get("height"):
+        head += f", {p['height']}cm"
     head += ")"
     bits.append(head)
     if p.get("conditions"):
@@ -162,6 +166,17 @@ def get_profile_memory(profile_id: str | None) -> str:
     if summary:
         block += f"\nRecent: {summary}"
     return block
+
+
+def get_plan(profile_id: str | None, node_type: str) -> str:
+    """Return the latest stored plan text of a given type (workout_plan / diet_plan) for a
+    person, or "" if none. Used so the diet plan can coordinate with the workout plan."""
+    if not profile_id:
+        return ""
+    for n in _nodes(profile_id):  # _nodes is ordered newest-first
+        if n["type"] == node_type:
+            return (n.get("data") or {}).get("plan", "") or ""
+    return ""
 
 
 def get_profile_graph(profile_id: str) -> dict:

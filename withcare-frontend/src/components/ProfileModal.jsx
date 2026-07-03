@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 
-const ACCENT = '#1C7A6A';
+function Sym({ name, className = '', fill = false }) {
+  return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
+}
+
 const GENDERS = ['', 'Female', 'Male', 'Other', 'Prefer not to say'];
 
-const inputStyle = {
-  width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #E2DACB',
-  background: '#FBF9F4', fontSize: 14, color: '#26322F', boxSizing: 'border-box',
-  fontFamily: 'inherit',
-};
-const labelStyle = { fontSize: 12.5, fontWeight: 600, color: '#6E7872', marginBottom: 5, display: 'block' };
+const inputCls = 'w-full px-3 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low text-[14px] text-on-surface outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all box-border';
+const labelCls = 'block text-[12.5px] font-semibold text-on-surface-variant mb-1.5';
 
 export default function ProfileModal({ initial, onClose, onSave }) {
   const editing = !!initial?.id;
@@ -21,6 +20,8 @@ export default function ProfileModal({ initial, onClose, onSave }) {
     email: initial?.email || '',
     age: initial?.age ?? '',
     gender: initial?.gender || '',
+    weight: initial?.weight ?? '',
+    height: initial?.height ?? '',
     conditions: initial?.conditions || '',
     notes: initial?.notes || '',
     photo: initial?.photo || '',
@@ -44,7 +45,12 @@ export default function ProfileModal({ initial, onClose, onSave }) {
     if (!f.name.trim()) { setErr('Name is required.'); return; }
     setBusy(true); setErr('');
     try {
-      await onSave({ ...f, name: f.name.trim(), age: f.age === '' ? null : Number(f.age) });
+      await onSave({
+        ...f, name: f.name.trim(),
+        age: f.age === '' ? null : Number(f.age),
+        weight: f.weight === '' ? null : Number(f.weight),
+        height: f.height === '' ? null : Number(f.height),
+      });
     } catch {
       setErr('Could not save. Try again.');
       setBusy(false);
@@ -57,116 +63,113 @@ export default function ProfileModal({ initial, onClose, onSave }) {
 
   const KindTab = ({ value, label, icon }) => (
     <button onClick={() => setF((p) => ({ ...p, kind: value }))}
-      style={{ flex: 1, padding: '9px', borderRadius: 10, cursor: 'pointer', fontSize: 13.5, fontWeight: 600,
-        border: f.kind === value ? `1px solid ${ACCENT}` : '1px solid #E2DACB',
-        background: f.kind === value ? '#EEF4F1' : '#fff',
-        color: f.kind === value ? ACCENT : '#8A8273' }}>
-      {icon} {label}
+      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13.5px] font-semibold border transition-colors
+        ${f.kind === value ? 'border-primary bg-primary-fixed text-primary' : 'border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container'}`}>
+      <Sym name={icon} className="text-[18px]" /> {label}
     </button>
   );
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(30,24,16,0.42)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
-      fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 460, maxHeight: '88vh', overflowY: 'auto',
-        background: '#fff', borderRadius: 20, border: '1px solid #E6DFD2', padding: '26px 28px',
-        boxShadow: '0 20px 60px rgba(40,30,20,0.18)' }}>
-        <div style={{ fontFamily: "'Newsreader', serif", fontSize: 21, fontWeight: 600, color: '#26322F', marginBottom: 4 }}>
-          {title}
-        </div>
-        <div style={{ fontSize: 13, color: '#9A9485', marginBottom: 18 }}>
-          These details help WithCare tailor guidance for {isPet ? 'this pet' : 'this person'}.
+    <div onClick={onClose} className="fixed inset-0 bg-scrim/50 flex items-center justify-center z-50 p-4 font-body-md">
+      <div onClick={(e) => e.stopPropagation()}
+        className="w-[460px] max-h-[88vh] overflow-y-auto bg-surface-container-lowest rounded-[20px] border border-outline-variant shadow-2xl p-7">
+        <div className="flex items-start gap-3 mb-1">
+          <div className="w-10 h-10 rounded-xl intelligence-gradient flex items-center justify-center shrink-0">
+            <Sym name={isPet ? 'pets' : 'person'} className="text-white text-[22px]" fill />
+          </div>
+          <div>
+            <h2 className="font-headline-lg text-[21px] text-on-surface leading-tight">{title}</h2>
+            <p className="text-[13px] text-on-surface-variant">These details help WithCare tailor guidance for {isPet ? 'this pet' : 'this person'}.</p>
+          </div>
         </div>
 
-        {/* Person / Pet toggle — hidden for the self profile */}
         {!isSelf && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-            <KindTab value="person" label="Person" icon="🧑" />
-            <KindTab value="pet" label="Pet" icon="🐾" />
+          <div className="flex gap-2 my-4">
+            <KindTab value="person" label="Person" icon="person" />
+            <KindTab value="pet" label="Pet" icon="pets" />
           </div>
         )}
 
         {/* Photo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18 }}>
-          <div style={{ width: 60, height: 60, borderRadius: '50%', flex: '0 0 auto', overflow: 'hidden',
-            background: f.photo ? 'transparent' : '#EDE7DB', color: '#8A8273', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700 }}>
-            {f.photo ? <img src={f.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (isPet ? '🐾' : initials)}
+        <div className="flex items-center gap-4 my-5">
+          <div className="w-16 h-16 rounded-full shrink-0 overflow-hidden flex items-center justify-center intelligence-gradient text-white text-2xl font-bold">
+            {f.photo ? <img src={f.photo} alt="" className="w-full h-full object-cover" /> : (isPet ? <Sym name="pets" className="text-[26px]" fill /> : initials)}
           </div>
-          <label style={{ ...labelStyle, cursor: 'pointer', color: ACCENT, marginBottom: 0 }}>
+          <label className="text-[13px] font-semibold text-primary cursor-pointer hover:underline">
             {f.photo ? 'Change photo' : 'Add photo'}
-            <input type="file" accept="image/*" onChange={onPhoto} style={{ display: 'none' }} />
+            <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
           </label>
           {f.photo && (
-            <button onClick={() => setF((p) => ({ ...p, photo: '' }))}
-              style={{ border: 'none', background: 'none', color: '#B0A797', cursor: 'pointer', fontSize: 12.5 }}>
-              Remove
-            </button>
+            <button onClick={() => setF((p) => ({ ...p, photo: '' }))} className="text-[12.5px] text-on-surface-variant hover:text-error">Remove</button>
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div style={{ gridColumn: '1 / 3' }}>
-            <label style={labelStyle}>Name *</label>
-            <input style={inputStyle} value={f.name} onChange={set('name')} placeholder={isPet ? 'e.g. Bruno' : 'e.g. Amma'} />
+        <div className="grid grid-cols-2 gap-3.5">
+          <div className="col-span-2">
+            <label className={labelCls}>Name *</label>
+            <input className={inputCls} value={f.name} onChange={set('name')} placeholder={isPet ? 'e.g. Bruno' : 'e.g. Amma'} />
           </div>
 
           {isPet ? (
             <div>
-              <label style={labelStyle}>Species / type</label>
-              <input style={inputStyle} value={f.species} onChange={set('species')} placeholder="Dog, Cat, Bird…" />
+              <label className={labelCls}>Species / type</label>
+              <input className={inputCls} value={f.species} onChange={set('species')} placeholder="Dog, Cat, Bird…" />
             </div>
           ) : (
             <div>
-              <label style={labelStyle}>Relation</label>
-              <input style={inputStyle} value={f.relation} onChange={set('relation')} placeholder="Mother, Father…" disabled={isSelf} />
+              <label className={labelCls}>Relation</label>
+              <input className={inputCls} value={f.relation} onChange={set('relation')} placeholder="Mother, Father…" disabled={isSelf} />
             </div>
           )}
 
           <div>
-            <label style={labelStyle}>Age</label>
-            <input style={inputStyle} type="number" min="0" max="120" value={f.age} onChange={set('age')} placeholder={isPet ? '4' : '68'} />
+            <label className={labelCls}>Age</label>
+            <input className={inputCls} type="number" min="0" max="120" value={f.age} onChange={set('age')} placeholder={isPet ? '4' : '68'} />
           </div>
-          <div style={{ gridColumn: '1 / 3' }}>
-            <label style={labelStyle}>{isPet ? 'Sex' : 'Gender'}</label>
-            <select style={inputStyle} value={f.gender} onChange={set('gender')}>
+          <div className="col-span-2">
+            <label className={labelCls}>{isPet ? 'Sex' : 'Gender'}</label>
+            <select className={inputCls} value={f.gender} onChange={set('gender')}>
               {GENDERS.map((g) => <option key={g} value={g}>{g || 'Select…'}</option>)}
             </select>
           </div>
-          <div style={{ gridColumn: '1 / 3' }}>
-            <label style={labelStyle}>
-              {isPet ? "Owner's Gmail" : 'Gmail'} <span style={{ fontWeight: 400, color: '#B0A797' }}>— for calendar sync & sharing the plan</span>
+          <div>
+            <label className={labelCls}>Weight <span className="font-normal text-on-surface-variant/70">(kg)</span></label>
+            <input className={inputCls} type="number" min="0" max="500" step="0.1" value={f.weight} onChange={set('weight')} placeholder={isPet ? '12' : '70'} />
+          </div>
+          <div>
+            <label className={labelCls}>Height <span className="font-normal text-on-surface-variant/70">(cm)</span></label>
+            <input className={inputCls} type="number" min="0" max="300" step="0.1" value={f.height} onChange={set('height')} placeholder={isPet ? '40' : '165'} />
+          </div>
+          <div className="col-span-2">
+            <label className={labelCls}>
+              {isPet ? "Owner's Gmail" : 'Gmail'} <span className="font-normal text-on-surface-variant/70">— for calendar sync &amp; sharing the plan</span>
             </label>
-            <input style={inputStyle} type="email" value={f.email} onChange={set('email')}
-              placeholder="name@gmail.com" />
+            <input className={inputCls} type="email" value={f.email} onChange={set('email')} placeholder="name@gmail.com" />
             {f.email && (
-              <div style={{ fontSize: 11.5, color: '#9A9485', marginTop: 5 }}>
-                Appointments will be added to this Google Calendar and the care plan shared with them.
-              </div>
+              <div className="text-[11.5px] text-on-surface-variant mt-1.5">Appointments will be added to this Google Calendar and the care plan shared with them.</div>
             )}
           </div>
-          <div style={{ gridColumn: '1 / 3' }}>
-            <label style={labelStyle}>Health conditions / problems</label>
-            <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={f.conditions}
-              onChange={set('conditions')} placeholder={isPet ? 'e.g. allergies, arthritis, vaccinations due' : 'e.g. Type 2 diabetes, hypertension, cataract'} />
+          <div className="col-span-2">
+            <label className={labelCls}>Health conditions / problems</label>
+            <textarea className={`${inputCls} min-h-[60px] resize-y`} value={f.conditions} onChange={set('conditions')}
+              placeholder={isPet ? 'e.g. allergies, arthritis, vaccinations due' : 'e.g. Type 2 diabetes, hypertension, cataract'} />
           </div>
-          <div style={{ gridColumn: '1 / 3' }}>
-            <label style={labelStyle}>Other important details</label>
-            <textarea style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} value={f.notes}
-              onChange={set('notes')} placeholder={isPet ? 'Breed, vet clinic, microchip, diet…' : 'Allergies, insurance/scheme, preferred hospital, mobility…'} />
+          <div className="col-span-2">
+            <label className={labelCls}>Other important details</label>
+            <textarea className={`${inputCls} min-h-[50px] resize-y`} value={f.notes} onChange={set('notes')}
+              placeholder={isPet ? 'Breed, vet clinic, microchip, diet…' : 'Allergies, insurance/scheme, preferred hospital, mobility…'} />
           </div>
         </div>
 
-        {err && <div style={{ color: '#C0492E', fontSize: 12.5, marginTop: 12 }}>{err}</div>}
+        {err && <div className="text-error text-[12.5px] mt-3">{err}</div>}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
-          <button onClick={onClose} style={{ padding: '10px 18px', borderRadius: 11, border: '1px solid #E2DACB',
-            background: '#fff', color: '#6E7872', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+        <div className="flex justify-end gap-2.5 mt-6">
+          <button onClick={onClose}
+            className="px-5 py-2.5 rounded-full border border-outline-variant text-on-surface-variant text-[14px] font-semibold hover:bg-surface-container">
             Cancel
           </button>
-          <button onClick={submit} disabled={busy} style={{ padding: '10px 20px', borderRadius: 11, border: 'none',
-            background: ACCENT, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+          <button onClick={submit} disabled={busy}
+            className="px-5 py-2.5 rounded-full intelligence-gradient text-white text-[14px] font-semibold shadow-md shadow-primary/20 hover:brightness-105 active:scale-95 transition disabled:opacity-60">
             {busy ? 'Saving…' : editing ? 'Save changes' : 'Add profile'}
           </button>
         </div>

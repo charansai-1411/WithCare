@@ -216,6 +216,8 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
       consent_given: !!profile.email,
       age: profile.age ?? null,
       gender: profile.gender || '',
+      weight: profile.weight ?? null,
+      height: profile.height ?? null,
       conditions: profile.conditions || '',
       notes: profile.notes || '',
     }] : [];

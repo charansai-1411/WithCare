@@ -18,6 +18,9 @@ from app.utils.exceptions import CalendarActionError
 _RRULE = {"daily": "RRULE:FREQ=DAILY", "weekly": "RRULE:FREQ=WEEKLY", "monthly": "RRULE:FREQ=MONTHLY"}
 
 
+_WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
 def _parse_time(t: str) -> str:
     """Return HH:MM 24h from '13:00', '1pm', '1:30 pm', etc. Defaults to 09:00."""
     t = (t or "").strip().lower()
@@ -37,6 +40,30 @@ def _parse_time(t: str) -> str:
     return "09:00"
 
 
+def _parse_date(d: str) -> str:
+    """Return an ISO date (YYYY-MM-DD). Accepts 'today', 'tomorrow', weekday names, and common
+    formats. Falls back to today — never raises (a worded date must not crash the turn)."""
+    d = (d or "").strip().lower()
+    today = date.today()
+    if not d or d == "today":
+        return today.isoformat()
+    if d in ("tomorrow", "tmrw", "tom"):
+        return (today + timedelta(days=1)).isoformat()
+    if d in _WEEKDAYS:
+        delta = (_WEEKDAYS.index(d) - today.weekday()) % 7 or 7
+        return (today + timedelta(days=delta)).isoformat()
+    try:
+        return datetime.fromisoformat(d).date().isoformat()
+    except Exception:
+        pass
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%m/%d/%Y", "%d %b %Y", "%d %B %Y", "%b %d %Y", "%B %d %Y"):
+        try:
+            return datetime.strptime(d, fmt).date().isoformat()
+        except Exception:
+            continue
+    return today.isoformat()
+
+
 class ReminderAgent(BaseAgent):
     name = "reminder_agent"
     description = "Sets calendar + email reminders for a specific person"
@@ -46,7 +73,10 @@ class ReminderAgent(BaseAgent):
         user_id = context.get("user_id", "")
         message = context.get("message") or context.get("reminder_message") or "Reminder"
         recurrence = (context.get("recurrence") or "none").lower()
-        lead = int(context.get("lead_minutes") or 10)
+        try:
+            lead = int(float(context.get("lead_minutes") or 10))
+        except (TypeError, ValueError):
+            lead = 10
         time_str = _parse_time(context.get("time", ""))
 
         # Resolve the recipient: explicit mention, else the active care member.
@@ -56,8 +86,8 @@ class ReminderAgent(BaseAgent):
         recip_email = (recip.get("email") if recip else "") or ""
         recip_pid = recip["id"] if recip else context.get("active_profile_id")
 
-        # Start date: given date, else today (recurring starts today).
-        start_date = context.get("date") or date.today().isoformat()
+        # Start date: normalized (accepts 'tomorrow', weekday names, ISO). Never raises.
+        start_date = _parse_date(context.get("date", ""))
         start_iso = f"{start_date}T{time_str}:00"
         end_iso = (datetime.fromisoformat(start_iso) + timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%S")
         rrule = _RRULE.get(recurrence)
@@ -98,9 +128,16 @@ class ReminderAgent(BaseAgent):
         except Exception as ex:
             self.logger.warning(f"KG write (reminder) failed: {ex}")
 
-        detail = (f"Reminder is set for {recip_name} — {when} at {time_str}, "
-                  f"notifying {lead} min before. Added to {'their' if recip_email else 'the'} calendar"
-                  + (" and emailed to them." if emailed else "."))
+        # Be honest about what actually happened with the calendar/email.
+        if event_link:
+            channel = (f" Added to {'their' if recip_email else 'the'} calendar"
+                       + (" and emailed to them." if emailed else "."))
+        else:
+            channel = (" I saved the reminder, but couldn't add it to the calendar"
+                       + (" or email them" if recip_email and not emailed else "")
+                       + " — please check the calendar connection.")
+        detail = (f"Reminder saved for {recip_name} — {when} at {time_str}, "
+                  f"notifying {lead} min before.{channel}")
         self.logger.info(f"ReminderAgent set reminder for {recip_name} ({recurrence} {time_str})")
 
         return AgentResult(

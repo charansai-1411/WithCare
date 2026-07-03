@@ -1,78 +1,137 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { fetchKgItems } from '../../services/kgApi';
+import AskBar from '../AskBar';
+import PlanCards from '../PlanCards';
 
-const ACCENT = '#1C7A6A';
+function Sym({ name, className = '', fill = false }) {
+  return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
+}
 
-// Light, safe render of the plan text: bold **headings**, keep line breaks. No HTML injection.
-function PlanText({ text }) {
-  const lines = (text || '').split('\n');
+function SegTabs({ tabs, value, onChange }) {
   return (
-    <div style={{ fontSize: 13.5, color: '#3A4641', lineHeight: 1.6 }}>
-      {lines.map((ln, i) => {
-        const t = ln.trim();
-        const h = t.match(/^\*\*(.+?)\*\*:?$/);
-        if (h) return <div key={i} style={{ fontWeight: 700, color: '#26322F', marginTop: i ? 10 : 0 }}>{h[1]}</div>;
-        if (!t) return <div key={i} style={{ height: 6 }} />;
-        // strip inline ** markers
-        return <div key={i}>{ln.replace(/\*\*/g, '')}</div>;
-      })}
+    <div className="flex border border-outline-variant rounded-full overflow-hidden">
+      {tabs.map((t) => (
+        <button key={t.k} onClick={() => onChange(t.k)}
+          className={`px-4 py-1.5 text-[13px] font-medium transition-colors ${value === t.k ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'}`}>
+          {t.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-export default function PlansView({ userId }) {
+function PersonChips({ persons, value, onChange }) {
+  if (persons.length <= 1) return null;
+  const all = ['__all', ...persons];
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {all.map((p) => (
+        <button key={p} onClick={() => onChange(p)}
+          className={`px-3 py-1.5 rounded-full text-[12.5px] font-medium border transition-colors
+            ${value === p ? 'border-primary bg-primary-fixed text-primary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'}`}>
+          {p === '__all' ? 'Everyone' : p}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function PlansView({ userId, onAsk }) {
   const [items, setItems] = useState(null);
   const [open, setOpen] = useState({});
+  const [tab, setTab] = useState('all');
+  const [person, setPerson] = useState('__all');
 
   const load = useCallback(() => { fetchKgItems(userId, 'plans').then(setItems); }, [userId]);
   useEffect(() => { load(); }, [load]);
 
   const list = items || [];
-  return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Newsreader', serif", fontSize: 24, fontWeight: 600, color: '#26322F' }}>Workout & Diet Plans</div>
-          <div style={{ fontSize: 13.5, color: '#9A9485' }}>Plans WithCare created, tailored to each person’s health.</div>
-        </div>
-        <button onClick={load} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid #E2DACB', background: '#fff', color: '#6E7872', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Refresh</button>
-      </div>
+  const persons = useMemo(() => [...new Set(list.map(i => i.profile_name).filter(Boolean))], [list]);
 
-      {items === null ? (
-        <div style={{ color: '#9A9485', fontSize: 14 }}>Loading…</div>
-      ) : list.length === 0 ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#B0A797', border: '1px dashed #DDD4C5', borderRadius: 16, background: '#FBF9F4' }}>
-          No plans yet. In chat, try “create a diet plan for my mother” or “make a workout plan for my father”.
+  const filtered = list.filter((it) => {
+    if (tab === 'workout' && it.type !== 'workout_plan') return false;
+    if (tab === 'diet' && it.type !== 'diet_plan') return false;
+    if (person !== '__all' && it.profile_name !== person) return false;
+    return true;
+  });
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 bg-background">
+      <div className="flex-1 overflow-y-auto px-8 py-7">
+        <div className="max-w-4xl mx-auto">
+        <div className="flex items-start gap-4 mb-6">
+          <div className="flex-1">
+            <h1 className="font-headline-lg text-[24px] text-on-surface">Workout &amp; Diet</h1>
+            <p className="text-[14px] text-on-surface-variant mt-0.5">Plans tailored to each person’s health conditions.</p>
+          </div>
+          <button onClick={load}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-[13px] font-medium hover:bg-surface-container shrink-0">
+            <Sym name="refresh" className="text-[18px]" /> Refresh
+          </button>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {list.map((it) => {
-            const isDiet = it.type === 'diet_plan';
-            const expanded = open[it.id];
-            return (
-              <div key={it.id} style={{ background: '#fff', border: '1px solid #E6DFD2', borderRadius: 16, overflow: 'hidden' }}>
-                <button onClick={() => setOpen((o) => ({ ...o, [it.id]: !o[it.id] }))}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '15px 18px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-                  <span style={{ fontSize: 20 }}>{isDiet ? '🥗' : '🏃'}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15.5, fontWeight: 600, color: '#2C3833' }}>{it.name}</div>
-                    <div style={{ fontSize: 12, color: '#A39C8C', marginTop: 2 }}>
-                      {isDiet ? 'Diet plan' : 'Workout plan'}{it.profile_name ? ` · ${it.profile_name}` : ''}
+
+        {list.length > 0 && (
+          <>
+            <div className="flex items-center gap-4 flex-wrap mb-4">
+              <SegTabs value={tab} onChange={setTab}
+                tabs={[{ k: 'all', label: 'All' }, { k: 'workout', label: 'Workout' }, { k: 'diet', label: 'Diet' }]} />
+              <PersonChips persons={persons} value={person} onChange={setPerson} />
+            </div>
+            <div className="flex items-center gap-2 bg-g-green-tint text-g-green-text rounded-xl px-4 py-2.5 mb-4 text-[12.5px]">
+              <Sym name="trending_up" className="text-[17px]" /> Plans adapt as health improves.
+            </div>
+          </>
+        )}
+
+        {items === null ? (
+          <div className="text-on-surface-variant text-sm">Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-card border border-dashed border-outline-variant bg-surface-container-low p-10 text-center text-on-surface-variant">
+            <Sym name="exercise" className="text-[32px] text-on-surface-variant/60 mb-2" />
+            <p className="text-[14px]">No plans yet. In chat, try <span className="text-on-surface font-medium">“create a diet plan for my mother”</span> or <span className="text-on-surface font-medium">“make a workout plan for my father”.</span></p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3.5">
+            {filtered.map((it) => {
+              const isDiet = it.type === 'diet_plan';
+              const expanded = open[it.id];
+              return (
+                <div key={it.id} className="bg-surface-container-lowest border border-outline-variant rounded-card shadow-sm overflow-hidden">
+                  <button onClick={() => setOpen((o) => ({ ...o, [it.id]: !o[it.id] }))}
+                    className="w-full flex items-center gap-3.5 px-5 py-4 text-left hover:bg-surface-container/40 transition-colors">
+                    <div className={`w-11 h-11 rounded-xl shrink-0 flex items-center justify-center ${isDiet ? 'bg-tertiary-fixed' : 'bg-g-green-tint'}`}>
+                      <Sym name={isDiet ? 'nutrition' : 'directions_run'} className={`text-[22px] ${isDiet ? 'text-tertiary' : 'text-g-green'}`} fill />
                     </div>
-                  </div>
-                  <span style={{ color: '#A39C8C', fontSize: 13 }}>{expanded ? '▲' : '▼'}</span>
-                </button>
-                {expanded && (
-                  <div style={{ padding: '4px 18px 18px', borderTop: '1px solid #F0EBE1' }}>
-                    <PlanText text={it.data?.plan} />
-                    <div style={{ fontSize: 11.5, color: '#B0A797', marginTop: 12 }}>General wellness guidance — not medical treatment.</div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[15.5px] font-semibold text-on-surface truncate">{it.name}</div>
+                      <div className="flex gap-1.5 mt-1.5">
+                        {it.profile_name && <span className="px-2.5 py-0.5 bg-primary-fixed text-on-primary-fixed rounded-full text-[11.5px] font-medium">{it.profile_name}</span>}
+                        <span className="px-2.5 py-0.5 bg-g-green-tint text-g-green-text rounded-full text-[11.5px] font-medium">{isDiet ? 'Diet plan' : 'Workout plan'}</span>
+                      </div>
+                    </div>
+                    <Sym name={expanded ? 'expand_less' : 'expand_more'} className="text-on-surface-variant text-[22px]" />
+                  </button>
+                  {expanded && (
+                    <div className="px-5 pb-5 pt-3 border-t border-outline-variant/60">
+                      <PlanCards text={it.data?.plan} variant="tabs" />
+                      <div className="text-[11.5px] text-on-surface-variant/70 mt-3">General wellness guidance — not medical treatment.</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
         </div>
-      )}
+      </div>
+      <AskBar
+        placeholder="Ask for a workout or diet plan…"
+        suggestions={[
+          { icon: 'nutrition', label: 'Diet plan for my mother', q: 'Create a diet plan for my mother' },
+          { icon: 'directions_run', label: 'Workout plan for my father', q: 'Make a workout plan for my father' },
+        ]}
+        onAsk={onAsk}
+      />
     </div>
   );
 }

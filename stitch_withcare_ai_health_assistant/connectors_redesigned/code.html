@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WithCare | Connectors</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#004493",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#40000d",
+                    "secondary-fixed-dim": "#dab9ff",
+                    "on-primary-fixed": "#001a41",
+                    "background": "#f8f9fa",
+                    "tertiary-container": "#c1535e",
+                    "on-surface": "#191c1d",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "surface": "#f8f9fa",
+                    "surface-bright": "#f8f9fa",
+                    "secondary": "#734ba1",
+                    "on-tertiary-container": "#ffffff",
+                    "tertiary-fixed": "#ffdadb",
+                    "surface-variant": "#e1e3e4",
+                    "surface-tint": "#005bc0",
+                    "inverse-primary": "#adc7ff",
+                    "on-secondary-container": "#583186",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#c1c6d6",
+                    "surface-container": "#edeeef",
+                    "on-secondary-fixed": "#2a0053",
+                    "tertiary-fixed-dim": "#ffb2b6",
+                    "secondary-container": "#cca0fe",
+                    "on-surface-variant": "#414754",
+                    "surface-container-high": "#e7e8e9",
+                    "surface-dim": "#d9dadb",
+                    "surface-container-low": "#f3f4f5",
+                    "secondary-fixed": "#efdbff",
+                    "primary-container": "#1a73e8",
+                    "surface-container-lowest": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#ffffff",
+                    "primary-fixed": "#d8e2ff",
+                    "on-secondary": "#ffffff",
+                    "outline": "#727785",
+                    "on-tertiary-fixed-variant": "#832331",
+                    "tertiary": "#a23b47",
+                    "on-secondary-fixed-variant": "#5a3287",
+                    "inverse-on-surface": "#f0f1f2",
+                    "primary-fixed-dim": "#adc7ff",
+                    "primary": "#005bbf",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-background": "#191c1d",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#2e3132"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-margin-mobile": "16px",
+                    "container-margin-desktop": "24px",
+                    "unit": "8px",
+                    "sidebar-width": "280px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-md": ["inter"],
+                    "body-lg": ["inter"],
+                    "label-md": ["inter"],
+                    "title-lg": ["plusJakartaSans"],
+                    "headline-lg": ["plusJakartaSans"],
+                    "display-lg": ["plusJakartaSans"],
+                    "button-text": ["plusJakartaSans"],
+                    "headline-lg-mobile": ["plusJakartaSans"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                    "title-lg": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "display-lg": ["44px", {"lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "button-text": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .intelligence-gradient {
+            background: linear-gradient(135deg, #1A73E8 0%, #734BA1 50%, #A23B47 100%);
+        }
+        .intelligence-text-gradient {
+            background: linear-gradient(135deg, #1A73E8 0%, #734BA1 50%, #A23B47 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-pill-shadow {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden">
+<!-- Side Navigation Bar -->
+<aside class="fixed left-0 top-0 h-full w-[sidebar-width] bg-surface-container-lowest border-r border-outline-variant flex flex-col p-4 z-50">
+<div class="mb-10 px-2">
+<h1 class="font-display-lg text-[32px] intelligence-text-gradient leading-tight">WithCare</h1>
+<p class="text-on-surface-variant text-sm font-medium">AI Healthcare Assistant</p>
+</div>
+<nav class="flex-grow space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors duration-200 cursor-pointer rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">chat_spark</span>
+<span class="font-label-md">Chat</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors duration-200 cursor-pointer rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">assignment</span>
+<span class="font-label-md">Tasks &amp; Reminders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors duration-200 cursor-pointer rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">fitness_center</span>
+<span class="font-label-md">Workout &amp; Diet</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors duration-200 cursor-pointer rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">person</span>
+<span class="font-label-md">Profiles</span>
+</a>
+<!-- Active State: Connectors -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-full bg-secondary-container text-on-secondary-container active-pill-shadow transition-all duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">hub</span>
+<span class="font-label-md">Connectors</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors duration-200 cursor-pointer rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">settings</span>
+<span class="font-label-md">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-outline-variant">
+<div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer group">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10">
+<img alt="Alex Johnson" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLbpkgSc7CLMwzWSmp_78Ew1465t0e_myQXrGIKmDG0S3pAjyO6-2WFT3RolFxnQg1l1gbNEnGdZ4EO9KNCK8k_5cfNomzhla_rxjC7Iujkag5y1EzHAFStd6WwbUTjzgMCbW8wMPbshctplERLG5D-Hx7n4A4iVcDg5Lv1jI7fxwSTa9_j-litGFUIp2UqN-JmrYkrAdnEnfmZWzzRw-AIqH29xfxC5cw8PhPFGNRNQIEFV2ggV2CLXkiL1EL_QkDtuq-LOqysDQ"/>
+</div>
+<div class="flex-grow min-w-0">
+<p class="font-label-md text-on-surface truncate">Alex Johnson</p>
+<p class="text-[11px] text-on-surface-variant font-semibold uppercase tracking-wider">Premium User</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">account_circle</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[280px] min-h-screen">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center h-16 px-container-margin-desktop bg-background/80 backdrop-blur-md z-40 sticky top-0 border-b border-outline-variant/30">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Connectors</h2>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">location_on</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">wifi</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="max-w-[1200px] mx-auto p-container-margin-desktop space-y-12">
+<!-- Hero Section -->
+<section class="flex flex-col md:flex-row md:items-center justify-between gap-8">
+<div class="max-w-2xl">
+<h3 class="font-headline-lg text-[40px] text-on-background leading-tight mb-4">Bridge your digital life</h3>
+<p class="text-on-surface-variant text-body-lg">
+                    Connect your Google services so WithCare can act for you. Sync your schedule, files, and communications to enable proactive health insights.
+                </p>
+</div>
+<div class="shrink-0">
+<div class="flex items-center gap-4 bg-primary/5 px-6 py-4 rounded-[24px] border border-primary/10">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Privacy First</p>
+<p class="text-sm text-on-surface-variant">Encrypted end-to-end</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Connector Grid: Active -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Google Calendar -->
+<div class="bg-surface-container-lowest p-6 rounded-[28px] border border-outline-variant hover:border-primary/30 transition-all group">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-white shadow-sm border border-outline-variant group-hover:scale-105 transition-transform">
+<img alt="Google Calendar" class="w-7 h-7" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLH6MG4zn9xWvFNKQHmLWESRf1m9muLdSm8Hlh7mMWabUMT41KH1C2IOw-o5ur5ReJT1udhTi_FQ1DVYefRqQEmatoC8VwZISQJ5J0cDSDreJeGkbgTiYWbw1Lc8WcFg939iVxNJvHe7v8iWl568haFCpKKGfAQTG3DfN-3_AA3EBOeEoR48WZcjdgVvUdsj5EYZnkVh9vU6MgPET68aPn9v4VcLpLMSbs42qi-O8KoDZLZnl29OscL06gIGSxEq1anxY40E68HIE"/>
+</div>
+<span class="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-emerald-100">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Connected
+                    </span>
+</div>
+<h4 class="font-title-lg text-on-surface mb-1">Google Calendar</h4>
+<p class="text-sm text-on-surface-variant mb-6">Last synced 2 minutes ago</p>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-bold uppercase tracking-tight">Events</span>
+<span class="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-bold uppercase tracking-tight">Tasks</span>
+<span class="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-bold uppercase tracking-tight">Reminders</span>
+</div>
+<button class="w-full py-3.5 rounded-2xl border border-outline text-on-surface font-button-text hover:bg-surface-container transition-colors active:scale-[0.98]">
+                    Manage Scope
+                </button>
+</div>
+<!-- Google Drive -->
+<div class="bg-surface-container-lowest p-6 rounded-[28px] border border-outline-variant hover:border-primary/30 transition-all group">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-white shadow-sm border border-outline-variant group-hover:scale-105 transition-transform">
+<img alt="Google Drive" class="w-7 h-7" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm2AKP6pqn5ZPwFi6WBxuNGgPZPW5f13DfQjOXoEdR4elPkq92ck8fOtmvmo6XGCMl0hsOuDO_lw5l58fJ_osBwq9JBqqv0FnjTykqoptJ9JwkE_XJiHLiH7spd1K_0HWfTi0UW3Q3i5-7PgJqLBvvcBTjV6QFpOFBXFgQQ2nzW88IITXNF71mP3i1G-Ob22u9NDkhWClMemT8p6ytqpNXpD5F4K1rkhF7mHfUn2ZmElGNVbf4ENTP1Ka2DunFzEdZXmI-etVeNnA"/>
+</div>
+<span class="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-emerald-100">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Connected
+                    </span>
+</div>
+<h4 class="font-title-lg text-on-surface mb-1">Google Drive</h4>
+<p class="text-sm text-on-surface-variant mb-6">Last synced 14 hours ago</p>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-bold uppercase tracking-tight">Medical Records</span>
+<span class="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-bold uppercase tracking-tight">PDF Scan</span>
+</div>
+<button class="w-full py-3.5 rounded-2xl border border-outline text-on-surface font-button-text hover:bg-surface-container transition-colors active:scale-[0.98]">
+                    Manage Scope
+                </button>
+</div>
+<!-- Gmail -->
+<div class="bg-surface-container-lowest p-6 rounded-[28px] border border-outline-variant hover:border-primary/30 transition-all group">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-white shadow-sm border border-outline-variant group-hover:scale-105 transition-transform">
+<img alt="Gmail" class="w-7 h-7" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcTTPXkxg0GX-g-TRWW37wHZ34P9k9bJAAkPLc47CI4vfV2_B4xmJomjhczxW0Uq9TjsxkKlPjNiHA75QnqReHFSJ41w18vKo21Qplr159-ds5wJugYNADAWsk4_hc58nLTBlX9samPuqhd5WgFLGf9e3gx_7U3p_I8YA27jzsMf-A4zcZLbnZ11ZqseLN_tZ-A2Smcgc_WY0Viy2y6cJejlTwOWhWiy2ZY8z4cyTXYweUz7Hix3u4BLNAN6cr740c8WQi63fBlFo"/>
+</div>
+<span class="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-emerald-100">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Connected
+                    </span>
+</div>
+<h4 class="font-title-lg text-on-surface mb-1">Gmail</h4>
+<p class="text-sm text-on-surface-variant mb-6">Last synced 5 minutes ago</p>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-bold uppercase tracking-tight">Insurances</span>
+<span class="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-bold uppercase tracking-tight">Appts</span>
+</div>
+<button class="w-full py-3.5 rounded-2xl border border-outline text-on-surface font-button-text hover:bg-surface-container transition-colors active:scale-[0.98]">
+                    Manage Scope
+                </button>
+</div>
+</section>
+<!-- Upcoming Section -->
+<section class="space-y-6 pt-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<h3 class="font-title-lg text-on-surface">Available Soon</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- WhatsApp -->
+<div class="bg-surface-container-low p-6 rounded-[28px] border border-outline-variant/50 group">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-high border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">chat</span>
+</div>
+<h4 class="font-bold text-on-surface">WhatsApp</h4>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Sync health tips and rapid alerts directly to your preferred messaging app.</p>
+</div>
+<!-- SMS -->
+<div class="bg-surface-container-low p-6 rounded-[28px] border border-outline-variant/50 group">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-high border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">sms</span>
+</div>
+<h4 class="font-bold text-on-surface">SMS Assist</h4>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Receive vital medication reminders via text without needing an active data connection.</p>
+</div>
+<!-- Fitbit -->
+<div class="bg-surface-container-low p-6 rounded-[28px] border border-outline-variant/50 group">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-high border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">watch_spark</span>
+</div>
+<h4 class="font-bold text-on-surface">Fitbit</h4>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Automated daily activity logs and heart rate analysis for better AI diagnostic modeling.</p>
+</div>
+</div>
+</section>
+<!-- Privacy Note Card -->
+<section class="bg-surface-container-high/40 p-10 rounded-[36px] flex flex-col md:flex-row gap-10 items-center border border-outline-variant/40 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+<div class="w-24 h-24 rounded-[32px] intelligence-gradient flex items-center justify-center shrink-0 shadow-xl shadow-primary/20 rotate-3 group-hover:rotate-0 transition-transform">
+<span class="material-symbols-outlined text-white text-5xl" style="font-variation-settings: 'wght' 700;">shield_lock</span>
+</div>
+<div class="space-y-4 relative z-10">
+<h4 class="font-headline-lg text-on-surface">Your data belongs to you.</h4>
+<p class="text-on-surface-variant font-body-md leading-relaxed max-w-3xl">
+                    WithCare acts as a secure intermediary. We never sell your data or share it with third parties. Your connections are encrypted with 256-bit AES standards and you can revoke access at any time.
+                </p>
+<div class="flex flex-wrap gap-6 pt-2">
+<a class="text-primary font-bold hover:underline flex items-center gap-2" href="#">
+                        Read Privacy Whitepaper
+                        <span class="material-symbols-outlined text-sm">open_in_new</span>
+</a>
+<span class="text-outline-variant hidden md:block">|</span>
+<a class="text-primary font-bold hover:underline flex items-center gap-2" href="#">
+                        Data Handling FAQ
+                        <span class="material-symbols-outlined text-sm">help</span>
+</a>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual FAB -->
+<button class="fixed bottom-8 right-8 w-16 h-16 rounded-[20px] intelligence-gradient text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group hover:rotate-3">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-45 transition-transform">add_link</span>
+</button>
+<script>
+    // Simple micro-interaction for active elements
+    document.querySelectorAll('button, a').forEach(elem => {
+        elem.addEventListener('mousedown', () => {
+            elem.classList.add('opacity-80');
+        });
+        elem.addEventListener('mouseup', () => {
+            elem.classList.remove('opacity-80');
+        });
+        elem.addEventListener('mouseleave', () => {
+            elem.classList.remove('opacity-80');
+        });
+    });
+</script>
+</body></html>

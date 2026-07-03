@@ -19,15 +19,26 @@ class WorkoutAgent(BaseAgent):
         family = context.get("family_profile") or []
         member = family[0] if family else {}
         who = member.get("name") or context.get("for_member") or "you"
-        age = member.get("age")
         conditions = member.get("conditions") or ""
         memory = context.get("memory") or ""
+        goal = context.get("goal") or context.get("focus") or "maintain (general fitness)"
+
+        # Full physical profile so the plan can tailor load/intensity/calorie needs.
+        facts = []
+        if member.get("age"):    facts.append(f"age {member['age']}")
+        if member.get("gender"): facts.append(str(member["gender"]))
+        if member.get("weight"): facts.append(f"weight {member['weight']} kg")
+        if member.get("height"): facts.append(f"height {member['height']} cm")
+        facts_line = ", ".join(facts) if facts else "not specified"
 
         prompt = (
             f"Create the weekly workout plan.\n"
-            f"Person: {who}" + (f", age {age}" if age else "") + ".\n"
+            f"Person: {who} ({facts_line}).\n"
+            f"GOAL: {goal}.  ← design the whole plan around this goal.\n"
             f"Known conditions: {conditions or 'none stated'}.\n"
-            f"What we know about them: {memory or '(nothing extra)'}\n"
+            + (f"Other details: {member['notes']}.\n" if member.get("notes") else "")
+            + f"What we know about them: {memory or '(nothing extra)'}\n"
+            f"Use their age/weight/height/conditions to set intensity and load safely.\n"
         )
         try:
             plan = (await generate_text(load_skill("workout"), prompt)).strip()

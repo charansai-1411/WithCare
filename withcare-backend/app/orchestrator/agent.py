@@ -31,7 +31,7 @@ from app.models.response_models import SourcedStep, StreamChunk
 from app.orchestrator.router import classify_intent
 from app.services.gemini_service import build_tools, generate_with_tools
 from app.services.grounding import renumber_steps
-from app.services.memory_service import get_profile_memory
+from app.services.memory_service import get_profile_memory, resolve_recipient
 from app.services.skills import load_skill
 from app.utils.exceptions import ClinicalRequestError
 from app.utils.logger import get_logger
@@ -120,15 +120,51 @@ TOOL_DECLS = [
     },
     {
         "name": "plan_workout",
-        "description": "Create a weekly workout plan for the active person, tailored to their age/conditions.",
+        "description": "Create a weekly workout plan for the active person, tailored to their "
+                       "age/gender/weight/height and conditions. If the user asks for BOTH a "
+                       "workout and a diet plan, call this FIRST so the diet can be built to fuel it. "
+                       "You MUST know the person's goal before calling — ask if it isn't already clear.",
         "parameters": {"type": "object", "properties": {
-            "focus": {"type": "string", "description": "Optional focus, e.g. 'weight loss', 'mobility'"}}},
+            "goal": {"type": "string", "description": "The person's fitness goal for this plan. "
+                     "One of: 'weight loss', 'weight gain', 'muscle gain', 'maintain' (normal/general "
+                     "fitness), or a specific focus like 'mobility'. REQUIRED — if the user hasn't said "
+                     "it and memory doesn't have it, ASK them first; never guess."},
+            "person": {"type": "string", "description": "Who the plan is for. Omit for the active "
+                       "person, or give the NAME/relation of another care profile (e.g. 'Amma', "
+                       "'mother', 'father') to make it for a family member. The user can manage plans "
+                       "for anyone in their care."}},
+            "required": ["goal"]},
     },
     {
         "name": "plan_diet",
-        "description": "Create a 7-day diet plan for the active person or pet, tailored to their conditions.",
+        "description": "Create a 7-day diet plan for the active person or pet, tailored to their "
+                       "age/gender/weight/height and conditions. It automatically coordinates with "
+                       "the person's existing workout plan (fuels training days), so prefer calling "
+                       "plan_workout before this when the user wants both. "
+                       "You MUST know the person's goal before calling — ask if it isn't already clear.",
         "parameters": {"type": "object", "properties": {
-            "focus": {"type": "string", "description": "Optional focus, e.g. 'diabetes', 'weight loss'"}}},
+            "goal": {"type": "string", "description": "The person's goal for this plan. One of: "
+                     "'weight loss', 'weight gain', 'muscle gain', 'maintain' (normal), or a specific "
+                     "focus like 'diabetes control'. REQUIRED — for a person (not a pet), if the user "
+                     "hasn't said it and memory doesn't have it, ASK first; never guess."},
+            "person": {"type": "string", "description": "Who the plan is for. Omit for the active "
+                       "person/pet, or give the NAME/relation of another care profile (e.g. 'Amma', "
+                       "'Nemo', 'father') to make it for a family member or pet."}},
+            "required": ["goal"]},
+    },
+    {
+        "name": "search_documents",
+        "description": "Search the user's uploaded documents (insurance policies, medical/lab "
+                       "reports, prescriptions, etc.) and get the relevant excerpts to answer from. "
+                       "Use this whenever the user asks about 'my policy/insurance/report/"
+                       "prescription/document' or anything that would be in an uploaded file "
+                       "(coverage limits, sum insured, test values, dosage, dates). Answer ONLY from "
+                       "the returned excerpts and cite the document label.",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "What to look for, phrased for retrieval."},
+            "label": {"type": "string", "description": "Optional — restrict to documents whose "
+                      "label/tag matches (e.g. 'Amma insurance'). Omit to search all documents."}},
+            "required": ["query"]},
     },
 ]
 
@@ -139,6 +175,7 @@ _AGENT_FOR_TOOL = {
     "set_reminder": ("reminder_agent", "Setting the reminder..."),
     "plan_workout": ("workout_agent", "Designing a workout plan..."),
     "plan_diet": ("diet_agent", "Designing a diet plan..."),
+    "search_documents": ("reader", "Searching your documents..."),
 }
 
 
@@ -259,12 +296,20 @@ class WithCareAgent:
                     args = dict(call.args or {})
                     agent_name, msg = _AGENT_FOR_TOOL.get(tool_name, ("orchestrator", "Working..."))
                     yield StreamChunk(type="thinking", content=msg, agent=agent_name)
-                    result = await self._run_tool(tool_name, args, base_ctx, collected)
+                    try:
+                        result = await self._run_tool(tool_name, args, base_ctx, collected)
+                    except Exception as te:
+                        # One tool failing must NOT sink the whole turn (e.g. a bad reminder should
+                        # not lose a diet plan). Report it back so the model continues gracefully.
+                        logger.exception(f"tool {tool_name} failed")
+                        result = {"error": f"{tool_name} could not be completed ({te}).",
+                                  "note": "Tell the user this specific part failed, then continue "
+                                          "with everything else that succeeded."}
                     contents.append(types.Content(role="user", parts=[
                         types.Part.from_function_response(name=tool_name, response=result)
                     ]))
         except Exception as e:
-            logger.error(f"agent loop failed: {e}")
+            logger.exception(f"agent loop failed: {e}")
             yield StreamChunk(type="error", content="Something went wrong — please try again.", agent="orchestrator")
             return
 
@@ -319,11 +364,50 @@ class WithCareAgent:
             return {"result": self._summarize(r.steps) or "Reminder set."}
 
         if name in ("plan_workout", "plan_diet"):
+            ctx = dict(base_ctx)
+            # The plan can target ANY of the owner's care profiles by name, not just the active one.
+            person = (args.get("person") or "").strip()
+            if person:
+                active = (base_ctx.get("family_profile") or [{}])[0]
+                same = person.lower() in (str(active.get("name", "")).lower(),
+                                          str(active.get("relation", "")).lower())
+                if not same:
+                    prof = resolve_recipient(person, base_ctx.get("user_id", ""))
+                    if prof:
+                        ctx["family_profile"] = [prof]
+                        ctx["active_profile_id"] = prof["id"]
+                        ctx["for_member"] = prof["name"]
+                        ctx["memory"] = get_profile_memory(prof["id"])
+                    else:
+                        return {"status": "need_more", "missing": ["person"],
+                                "note": f"No care profile matches '{person}'. Ask the user who it's for, "
+                                        "or suggest they add that person under Profiles."}
+            # A plan needs a goal. For a person (not a pet), ask if it's missing.
+            family = ctx.get("family_profile") or []
+            is_pet = (family[0].get("kind") == "pet") if family else False
+            goal = (args.get("goal") or args.get("focus") or "").strip()
+            if not goal and not is_pet:
+                who = (family[0].get("name") if family else None) or "them"
+                return {"status": "need_more", "missing": ["goal"],
+                        "note": f"Before making {who}'s plan, ASK their goal in ONE short question — "
+                                "offer weight loss, weight gain, muscle gain, or maintain (normal). "
+                                "Do not generate the plan yet."}
             agent = self.workout_agent if name == "plan_workout" else self.diet_agent
-            r = await agent.run({**base_ctx, "focus": args.get("focus", "")})
+            r = await agent.run({**ctx, "goal": goal, "focus": goal})
             collected.extend(r.steps)
             # Return the full plan so the model can present it (it's the whole point).
             return {"result": (r.steps[0].detail if r.steps else "Could not create the plan.")}
+
+        if name == "search_documents":
+            from app.services.reader_service import context_for_agent
+            uid = base_ctx.get("user_id", "")
+            res = context_for_agent(uid, args.get("query", ""), label=args.get("label") or None)
+            if not res.get("found"):
+                return {"found": False,
+                        "note": "No matching uploaded document. Tell the user you couldn't find it in "
+                                "their documents and offer to have them upload it in the Reader."}
+            return {"found": True, "excerpts": res["excerpts"], "sources": res["sources"],
+                    "note": "Answer ONLY from these excerpts; cite the document label in parentheses."}
 
         if name == "schedule_appointment":
             missing = [k for k in ("procedure", "date") if not args.get(k)]

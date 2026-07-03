@@ -11,7 +11,7 @@ from app.services.memory_service import sync_profile_to_kg, get_profile_graph
 
 router = APIRouter(prefix="/api/profiles", tags=["Profiles"])
 
-_FIELDS = ("name", "kind", "relation", "species", "email", "age", "gender", "conditions", "notes", "photo", "is_self")
+_FIELDS = ("name", "kind", "relation", "species", "email", "age", "gender", "weight", "height", "conditions", "notes", "photo", "is_self")
 
 
 def _ensure_user(db, user_id: str):
@@ -54,8 +54,8 @@ def create_profile(body: dict, x_user_id: str = Header(...)):
     _ensure_user(db, x_user_id)
     pid = "p-" + uuid.uuid4().hex[:12]
     db.execute(
-        """INSERT INTO profiles(id, user_id, name, kind, relation, species, email, age, gender, conditions, notes, photo)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+        """INSERT INTO profiles(id, user_id, name, kind, relation, species, email, age, gender, weight, height, conditions, notes, photo)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             pid, x_user_id,
             body["name"].strip(),
@@ -65,6 +65,8 @@ def create_profile(body: dict, x_user_id: str = Header(...)):
             body.get("email", ""),
             body.get("age"),
             body.get("gender", ""),
+            body.get("weight"),
+            body.get("height"),
             body.get("conditions", ""),
             body.get("notes", ""),
             body.get("photo", ""),
