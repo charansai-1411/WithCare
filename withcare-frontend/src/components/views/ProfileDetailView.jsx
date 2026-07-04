@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { fetchKgItems } from '../../services/kgApi';
+import Button from '../ui/Button';
+import Counter from '../ui/Counter';
+
+function StatChip({ label, value, unit }) {
+  return (
+    <div className="flex flex-col items-center px-4 py-2 rounded-2xl bg-surface-container-low border border-outline-variant/60 min-w-[68px]">
+      <div className="text-[18px] font-bold text-on-surface leading-none">
+        <Counter value={value} />{unit && <span className="text-[12px] font-medium text-on-surface-variant ml-0.5">{unit}</span>}
+      </div>
+      <div className="text-[10.5px] font-semibold uppercase tracking-wide text-on-surface-variant mt-1">{label}</div>
+    </div>
+  );
+}
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -67,9 +80,9 @@ export default function ProfileDetailView({ userId, profile, onBack, onEdit, onU
           <Sym name="arrow_back" className="text-[18px]" /> All profiles
         </button>
 
-        {/* Header */}
-        <div className="flex items-center gap-5 bg-surface-container-lowest border border-outline-variant rounded-card shadow-sm p-6 mb-4 flex-wrap">
-          <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center intelligence-gradient text-white text-2xl font-bold shrink-0">
+        {/* Header — container-transform in */}
+        <div className="flex items-center gap-5 bg-surface-container-lowest border border-outline-variant rounded-card elev-2 p-6 mb-4 flex-wrap m3-container">
+          <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center intelligence-gradient text-white text-2xl font-bold shrink-0 m3-pop">
             {profile.photo ? <img src={profile.photo} alt="" className="w-full h-full object-cover" /> : initial}
           </div>
           <div className="flex-1 min-w-[200px]">
@@ -83,23 +96,24 @@ export default function ProfileDetailView({ userId, profile, onBack, onEdit, onU
                 <Sym name="mail" className="text-g-red text-[15px]" />{profile.email}
               </div>
             )}
+            {(profile.age || profile.weight || profile.height) && (
+              <div className="flex gap-2 mt-3 m3-stagger">
+                {profile.age ? <StatChip label={isPet ? 'Years' : 'Age'} value={profile.age} /> : null}
+                {profile.weight ? <StatChip label="Weight" value={profile.weight} unit="kg" /> : null}
+                {profile.height ? <StatChip label="Height" value={profile.height} unit="cm" /> : null}
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             {!profile.is_self && (
-              <button onClick={() => onUseForChat(profile.id)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full intelligence-gradient text-white text-[13px] font-semibold shadow-sm hover:brightness-105 active:scale-95 transition">
-                <Sym name="chat" className="text-[17px]" /> Chat
-              </button>
+              <Button variant="gradient" size="sm" icon="chat" iconFill onClick={() => onUseForChat(profile.id)}>Chat</Button>
             )}
-            <button onClick={() => onEdit(profile)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-outline-variant text-primary text-[13px] font-semibold hover:bg-surface-container">
-              <Sym name="edit" className="text-[17px]" /> Edit
-            </button>
+            <Button variant="outlined" size="sm" icon="edit" onClick={() => onEdit(profile)}>Edit</Button>
           </div>
         </div>
 
         {/* Cards grid */}
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+        <div className="grid gap-4 m3-stagger" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
           <Card icon="badge" iconClass="text-g-yellow" title="About">
             {conds.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2.5">

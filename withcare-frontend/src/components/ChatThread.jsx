@@ -31,15 +31,15 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
         {/* Empty state */}
         {noMessages && (
           <div className="max-w-3xl mx-auto flex flex-col items-center text-center space-y-5 pt-16">
-            <div className="w-20 h-20 rounded-[24px] intelligence-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="w-20 h-20 rounded-[24px] intelligence-gradient flex items-center justify-center elev-3 shadow-primary/20 m3-pop m3-breathe">
               <Sym name="auto_awesome" className="text-white text-[40px]" fill />
             </div>
-            <h3 className="font-headline-lg text-[28px] text-on-surface">How can I help with your care today?</h3>
-            <p className="text-[15px] text-on-surface-variant max-w-md">Ask about schemes, insurance, nearby facilities, affordable medicines, reminders, or plans — I’ll handle the rest.</p>
-            <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <h3 className="font-headline-lg text-[28px] text-on-surface m3-enter" style={{ animationDelay: '.08s' }}>How can I help with your care today?</h3>
+            <p className="text-[15px] text-on-surface-variant max-w-md m3-enter" style={{ animationDelay: '.14s' }}>Ask about schemes, insurance, nearby facilities, affordable medicines, reminders, or plans — I’ll handle the rest.</p>
+            <div className="flex flex-wrap justify-center gap-3 pt-2 m3-stagger">
               {SUGGESTIONS.map((s, i) => (
                 <button key={i} onClick={() => send(s.q)}
-                  className="px-5 py-2.5 rounded-full border border-outline-variant bg-surface-container-lowest hover:bg-surface-container transition-colors text-sm font-medium flex items-center gap-2 shadow-sm">
+                  className="press lift px-5 py-2.5 rounded-full border border-outline-variant bg-surface-container-lowest hover:bg-surface-container transition-colors text-sm font-medium flex items-center gap-2 elev-1">
                   <Sym name={CHIP_ICON[i % CHIP_ICON.length]} className="text-primary text-[18px]" />
                   {s.label}
                 </button>
@@ -54,15 +54,15 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
             const vm = msgVM(m);
             if (vm.isUser) {
               return (
-                <div key={vm.id} className="flex justify-end">
-                  <div className="max-w-[80%] bg-secondary-fixed text-on-secondary-fixed px-5 py-3 rounded-action rounded-tr-md shadow-sm">
+                <div key={vm.id} className="flex justify-end m3-enter">
+                  <div className="max-w-[80%] bg-secondary-fixed text-on-secondary-fixed px-5 py-3 rounded-action rounded-tr-md elev-1">
                     <p className="text-[15px] leading-relaxed">{vm.text}</p>
                   </div>
                 </div>
               );
             }
             return (
-              <div key={vm.id}>
+              <div key={vm.id} className="m3-enter">
                 {vm.animating && <AgentFlowAnimation orch={vm.orch} subs={vm.subs} />}
 
                 {vm.isClarify && (

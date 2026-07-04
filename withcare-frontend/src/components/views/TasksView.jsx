@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { fetchKgItems } from '../../services/kgApi';
 import AskBar from '../AskBar';
+import { SkeletonList } from '../ui/Skeleton';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -93,7 +94,7 @@ export default function TasksView({ userId, onAsk }) {
         )}
 
         {items === null ? (
-          <div className="text-on-surface-variant text-sm">Loading…</div>
+          <SkeletonList count={3} />
         ) : filtered.length === 0 ? (
           <div className="rounded-card border border-dashed border-outline-variant bg-surface-container-low p-10 text-center">
             <Sym name="alarm_add" className="text-[32px] text-on-surface-variant/60" />

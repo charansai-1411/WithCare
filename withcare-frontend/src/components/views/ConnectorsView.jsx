@@ -23,7 +23,7 @@ export default function ConnectorsView() {
         <h1 className="font-headline-lg text-[24px] text-on-surface">Connectors</h1>
         <p className="text-[14px] text-on-surface-variant mb-6">Connect your Google services so WithCare can act for you.</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 m3-stagger">
           {CONNECTED.map(c => (
             <div key={c.name} className="bg-surface-container-lowest rounded-card p-5 border border-outline-variant">
               <div className="flex items-start gap-4">

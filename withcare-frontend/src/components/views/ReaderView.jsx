@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchDocuments, uploadDocument, deleteDocument, askDocuments } from '../../services/readerApi';
+import { SkeletonList } from '../ui/Skeleton';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -128,14 +129,14 @@ export default function ReaderView({ userId }) {
         {/* Documents */}
         <h2 className="font-title-lg text-[15px] text-on-surface mt-7 mb-3">Your documents</h2>
         {docs === null ? (
-          <div className="text-on-surface-variant text-sm">Loading…</div>
+          <SkeletonList count={2} />
         ) : list.length === 0 ? (
           <div className="rounded-card border border-dashed border-outline-variant bg-surface-container-low p-10 text-center text-on-surface-variant">
             <Sym name="folder_open" className="text-[34px] text-on-surface-variant/60 mb-2" />
             <p className="text-[14px]">No documents yet. Upload a policy or report above to start asking questions.</p>
           </div>
         ) : (
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+          <div className="grid gap-3 m3-stagger" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
             {list.map((d) => {
               const k = KIND[d.kind] || KIND.document;
               return (

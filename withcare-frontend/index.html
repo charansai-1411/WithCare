@@ -110,6 +110,19 @@
         --g-green-text: 24 128 56; --g-green-tint: 230 244 234;
         --scrim: 0 0 0;
         --scrollbar: 217 218 219;
+        /* M3 motion system */
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+        --ease-emph: cubic-bezier(0.2, 0, 0, 1);
+        --ease-emph-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+        --ease-emph-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+        --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        --dur-short: 200ms; --dur-medium: 350ms; --dur-long: 500ms;
+        /* M3 elevation (light) */
+        --e1: 0 1px 2px rgba(60,64,67,.10), 0 1px 3px 1px rgba(60,64,67,.08);
+        --e2: 0 1px 2px rgba(60,64,67,.10), 0 2px 6px 2px rgba(60,64,67,.08);
+        --e3: 0 1px 3px rgba(60,64,67,.10), 0 4px 8px 3px rgba(60,64,67,.10);
+        --e4: 0 2px 3px rgba(60,64,67,.12), 0 6px 10px 4px rgba(60,64,67,.10);
+        --e5: 0 4px 4px rgba(60,64,67,.14), 0 8px 12px 6px rgba(60,64,67,.12);
       }
       /* ── dark (Google Workspace night) ── */
       html.dark {
@@ -129,6 +142,12 @@
         --g-green-text: 129 201 149; --g-green-tint: 30 45 36;
         --scrim: 0 0 0;
         --scrollbar: 60 64 67;
+        /* M3 elevation (dark — deeper shadows) */
+        --e1: 0 1px 2px rgba(0,0,0,.30), 0 1px 3px 1px rgba(0,0,0,.20);
+        --e2: 0 1px 2px rgba(0,0,0,.30), 0 2px 6px 2px rgba(0,0,0,.24);
+        --e3: 0 1px 3px rgba(0,0,0,.30), 0 4px 8px 3px rgba(0,0,0,.26);
+        --e4: 0 2px 3px rgba(0,0,0,.30), 0 6px 10px 4px rgba(0,0,0,.28);
+        --e5: 0 4px 4px rgba(0,0,0,.34), 0 8px 12px 6px rgba(0,0,0,.30);
       }
     </style>
     <style type="text/tailwindcss">
@@ -137,15 +156,116 @@
       .text-gradient { background: linear-gradient(120deg, #1a73e8, #734ba1); -webkit-background-clip: text; background-clip: text; color: transparent; }
       .ai-shimmer { background: linear-gradient(90deg, transparent, rgba(26,115,232,0.06), transparent); background-size: 200% 100%; animation: shimmer 2s infinite linear; }
       @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-      .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; user-select: none; }
+      .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; user-select: none; transition: font-variation-settings var(--dur-short) var(--ease-standard); }
       .msym-fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
       ::-webkit-scrollbar { width: 8px; height: 8px; }
       ::-webkit-scrollbar-thumb { background-color: rgb(var(--scrollbar)); border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--outline)); }
       ::-webkit-scrollbar-track { background: transparent; }
+    </style>
+
+    <!-- ── Material 3 motion, elevation, ripple & state layers ── -->
+    <style>
+      /* Elevation utilities */
+      .elev-1 { box-shadow: var(--e1); } .elev-2 { box-shadow: var(--e2); }
+      .elev-3 { box-shadow: var(--e3); } .elev-4 { box-shadow: var(--e4); } .elev-5 { box-shadow: var(--e5); }
+
+      /* Entrance / transition animations (M3 emphasized easing) */
+      @keyframes m3-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+      @keyframes m3-scale-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+      @keyframes m3-fade-through { from { opacity: 0; transform: translateY(8px) scale(.995); } to { opacity: 1; transform: none; } }
+      @keyframes m3-pop { 0% { opacity: 0; transform: scale(.6); } 55% { transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+      @keyframes m3-slide-right { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+      @keyframes m3-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+      @keyframes m3-spin { to { transform: rotate(360deg); } }
+
+      .m3-enter { animation: m3-enter var(--dur-medium) var(--ease-emph-decel) both; }
+      .m3-fade-through { animation: m3-fade-through var(--dur-medium) var(--ease-emph-decel) both; }
+      .m3-scale-in { animation: m3-scale-in var(--dur-short) var(--ease-standard) both; }
+      .m3-pop { animation: m3-pop var(--dur-medium) var(--ease-spring) both; }
+      .m3-slide-right { animation: m3-slide-right var(--dur-medium) var(--ease-emph-decel) both; }
+      .m3-breathe { animation: m3-breathe 3.5s var(--ease-standard) infinite; }
+
+      /* Stagger children (nav lists, card grids) */
+      .m3-stagger > * { animation: m3-enter var(--dur-medium) var(--ease-emph-decel) both; }
+      .m3-stagger > *:nth-child(1){animation-delay:.02s}.m3-stagger > *:nth-child(2){animation-delay:.06s}
+      .m3-stagger > *:nth-child(3){animation-delay:.10s}.m3-stagger > *:nth-child(4){animation-delay:.14s}
+      .m3-stagger > *:nth-child(5){animation-delay:.18s}.m3-stagger > *:nth-child(6){animation-delay:.22s}
+      .m3-stagger > *:nth-child(7){animation-delay:.26s}.m3-stagger > *:nth-child(8){animation-delay:.30s}
+
+      /* State layer — subtle hover/press overlay in the element's own on-color */
+      .state { position: relative; isolation: isolate; }
+      .state::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: currentColor;
+        opacity: 0; transition: opacity var(--dur-short) var(--ease-standard); pointer-events: none; z-index: 0; }
+      .state:hover::after { opacity: .08; }
+      .state:active::after { opacity: .12; }
+      .state > * { position: relative; z-index: 1; }
+
+      /* Press feedback */
+      .press { transition: transform 120ms var(--ease-standard), box-shadow var(--dur-short) var(--ease-standard); }
+      .press:active { transform: scale(.96); }
+
+      /* Hover-lift for cards */
+      .lift { transition: box-shadow var(--dur-short) var(--ease-standard), transform var(--dur-short) var(--ease-standard); }
+      .lift:hover { box-shadow: var(--e3); transform: translateY(-2px); }
+
+      /* Ripple (attached by the global script to [data-ripple]/.ripple elements) */
+      .ripple { position: relative; overflow: hidden; }
+      .ripple-ink { position: absolute; border-radius: 50%; background: currentColor; opacity: .18;
+        transform: scale(0); pointer-events: none; z-index: 0; animation: m3-ripple 560ms var(--ease-standard) forwards; }
+      @keyframes m3-ripple { to { transform: scale(2.5); opacity: 0; } }
+
+      /* Nav active indicator grows in */
+      @keyframes m3-indicator { from { transform: scaleX(.3); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+
+      /* Container transform — a card "expands" into its detail page (spring). */
+      @keyframes m3-container-in { from { opacity: 0; transform: scale(.9) translateY(16px); } to { opacity: 1; transform: none; } }
+      .m3-container { animation: m3-container-in var(--dur-long) var(--ease-emph-decel) both; }
+
+      /* Skeleton loading placeholder (M3 shimmer) */
+      .skeleton { position: relative; overflow: hidden; background: rgb(var(--surface-container-high)); border-radius: 10px; }
+      .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, rgb(var(--surface-container-highest) / .85), transparent);
+        animation: m3-shimmer 1.4s var(--ease-standard) infinite; }
+      @keyframes m3-shimmer { 100% { transform: translateX(100%); } }
+
+      /* Coordinated page-load hero: children enter in sequence */
+      .m3-load > * { animation: m3-enter var(--dur-long) var(--ease-emph-decel) both; }
+      .m3-load > *:nth-child(1){animation-delay:.04s}.m3-load > *:nth-child(2){animation-delay:.12s}
+      .m3-load > *:nth-child(3){animation-delay:.20s}
+
+      /* Accessibility: honor reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+      }
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Material 3 ripple: delegated, so every button gets it without per-component wiring. -->
+    <script>
+      (function () {
+        var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.addEventListener('pointerdown', function (e) {
+          if (reduce || e.button !== 0) return;
+          var el = e.target.closest('button, [role="button"], .ripple, [data-ripple]');
+          if (!el || el.disabled || el.hasAttribute('data-no-ripple')) return;
+          var cs = getComputedStyle(el);
+          if (cs.position === 'static') el.style.position = 'relative';
+          el.style.overflow = 'hidden';
+          var rect = el.getBoundingClientRect();
+          var size = Math.max(rect.width, rect.height);
+          var ink = document.createElement('span');
+          ink.className = 'ripple-ink';
+          ink.style.width = ink.style.height = size + 'px';
+          ink.style.left = (e.clientX - rect.left - size / 2) + 'px';
+          ink.style.top = (e.clientY - rect.top - size / 2) + 'px';
+          el.appendChild(ink);
+          ink.addEventListener('animationend', function () { ink.remove(); });
+        }, { passive: true });
+      })();
+    </script>
   </body>
 </html>

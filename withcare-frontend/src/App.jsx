@@ -190,7 +190,7 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-16 flex justify-between items-center px-6 bg-background/80 backdrop-blur-md border-b border-outline-variant/30 shrink-0">
+        <header className="h-16 flex justify-between items-center px-6 bg-background/80 backdrop-blur-md border-b border-outline-variant/30 shrink-0 m3-enter">
           <div className="flex items-center gap-3 min-w-0">
             <Sym name={activeView === 'chat' ? 'person_pin' : 'space_dashboard'} className="text-primary text-[22px]" fill />
             <div className="min-w-0">
@@ -200,7 +200,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={editLocation} title="Set your location"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface-variant text-[12px] font-medium border border-outline-variant/50 hover:bg-surface-container-high">
+              className="press flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface-variant text-[12px] font-medium border border-outline-variant/50 hover:bg-surface-container-high">
               <Sym name="location_on" className="text-g-red text-[16px]" />
               {userLocation.city || 'Set location'}
             </button>
@@ -208,13 +208,14 @@ export default function App() {
               <span className="w-1.5 h-1.5 rounded-full bg-g-green animate-pulse" /> Connected
             </div>
             <button onClick={flipTheme} title="Toggle theme"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+              className="press w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
               <Sym name={theme === 'dark' ? 'light_mode' : 'dark_mode'} className="text-[20px]" />
             </button>
           </div>
         </header>
 
-        {/* Content */}
+        {/* Content — animates on view change */}
+        <div key={detailProfileId ? `pd-${detailProfileId}` : activeView} className="flex-1 flex flex-col min-h-0 m3-fade-through">
         {activeView === 'tasks' ? <TasksView userId={userId} onAsk={askFromView} />
           : activeView === 'plans' ? <PlansView userId={userId} onAsk={askFromView} />
           : activeView === 'reader' ? <ReaderView userId={userId} />
@@ -238,6 +239,7 @@ export default function App() {
               <div className="flex-1 flex items-center justify-center text-on-surface-variant text-sm">Loading conversation…</div>
             )
           : <ChatThread messages={messages} input={input} setInput={setInput} send={send} onKey={onKey} msgVM={msgVM} />}
+        </div>
       </div>
 
       {modal && (

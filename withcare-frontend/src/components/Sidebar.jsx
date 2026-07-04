@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Button from './ui/Button';
 
 const NAV = [
   { key: 'chat',    label: 'Chat',              icon: 'chat_bubble' },
@@ -46,7 +47,7 @@ export default function Sidebar({
   return (
     <div className="h-full w-full bg-surface flex flex-col p-4 font-body-md text-on-surface">
       {/* Logo */}
-      <div className="mb-5 px-2 flex items-center gap-2">
+      <div className="mb-5 px-2 flex items-center gap-2 m3-enter">
         <div className="w-9 h-9 rounded-xl intelligence-gradient flex items-center justify-center shrink-0">
           <Sym name="health_and_safety" className="text-white text-[20px]" fill />
         </div>
@@ -57,20 +58,21 @@ export default function Sidebar({
       </div>
 
       {/* New conversation */}
-      <button onClick={onNewChat}
-        className="flex items-center justify-center gap-2 w-full py-3 px-5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-button-text hover:brightness-95 transition active:scale-95 mb-4">
-        <Sym name="add" className="text-[20px]" /> New conversation
-      </button>
+      <Button variant="tonal" full icon="add" onClick={onNewChat} className="mb-4">New conversation</Button>
 
       {/* Primary nav */}
-      <nav className="space-y-0.5">
+      <nav className="space-y-0.5 m3-stagger">
         {NAV.map(item => {
           const active = activeView === item.key;
           return (
             <button key={item.key} onClick={() => onSelectView(item.key)}
-              className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-full transition-colors text-[14px]
-                ${active ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}>
-              <Sym name={item.icon} className="text-[20px]" fill={active} />
+              className={`press relative flex items-center gap-3 w-full px-4 py-2.5 rounded-full transition-all duration-300 text-[14px]
+                ${active ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+              style={active ? { transitionTimingFunction: 'cubic-bezier(0.05,0.7,0.1,1)' } : undefined}>
+              {active && <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-primary origin-center"
+                               style={{ animation: 'm3-indicator var(--dur-medium) var(--ease-emph-decel)' }} />}
+              <Sym key={active ? 'on' : 'off'} name={item.icon}
+                   className={`text-[20px] ${active ? 'm3-pop' : ''}`} fill={active} />
               <span className="truncate">{item.label}</span>
             </button>
           );
@@ -80,7 +82,7 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto -mx-1 px-1 mt-3">
         {/* Care profiles quick-switch */}
         <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-3 pt-3 pb-1.5">Care profiles</p>
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 m3-stagger">
           {profiles.map(p => (
             <div key={p.id} className="relative group"
                  onMouseEnter={() => setHoverProf(p.id)} onMouseLeave={() => setHoverProf(null)}>

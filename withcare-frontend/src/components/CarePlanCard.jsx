@@ -89,7 +89,7 @@ export default function CarePlanCard({ msg }) {
   if (!hasFacilities && !hasCoverage && !hasMedicines && !hasSchedule) return null;
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-card overflow-hidden shadow-sm">
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-card overflow-hidden elev-2 m3-scale-in">
       {hasFacilities && <FacilitiesSection facilities={facilities} />}
 
       {hasCoverage && (

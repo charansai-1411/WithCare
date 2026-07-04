@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '../ui/Button';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -17,21 +18,18 @@ export default function ProfilesView({ profiles, activeProfileId, onSelect, onAd
             <h1 className="font-headline-lg text-[24px] text-on-surface">Care Profiles</h1>
             <p className="text-[14px] text-on-surface-variant">Everyone you manage care for — people and pets.</p>
           </div>
-          <button onClick={onAdd}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full intelligence-gradient text-white font-button-text shadow-md shadow-primary/20 hover:brightness-105 active:scale-95 transition">
-            <Sym name="add" className="text-[20px]" /> Add profile
-          </button>
+          <Button variant="gradient" icon="add" onClick={onAdd}>Add profile</Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 m3-stagger">
           {profiles.map(p => {
             const isPet = p.kind === 'pet';
             const active = p.id === activeProfileId;
             const conds = chips(p.conditions);
             return (
               <div key={p.id}
-                className={`relative bg-surface-container-lowest rounded-card p-5 border transition-shadow cursor-pointer group hover:shadow-md
-                  ${active ? 'border-primary shadow-md shadow-primary/10' : 'border-outline-variant'}`}
+                className={`ripple lift relative bg-surface-container-lowest rounded-card p-5 border cursor-pointer group
+                  ${active ? 'border-primary elev-2' : 'border-outline-variant elev-1'}`}
                 onClick={() => onSelect(p.id)}>
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center intelligence-gradient text-white text-xl font-bold shrink-0">

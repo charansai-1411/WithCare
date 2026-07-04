@@ -28,7 +28,7 @@ function Row({ label, sub, children }) {
 export default function SettingsView({ user, location, onEditLocation, onSignOut }) {
   return (
     <div className="flex-1 overflow-y-auto px-8 py-7 bg-background">
-      <div className="max-w-3xl mx-auto space-y-5">
+      <div className="max-w-3xl mx-auto space-y-5 m3-stagger">
         <h1 className="font-headline-lg text-[24px] text-on-surface mb-1">Settings</h1>
 
         <Card title="Account">

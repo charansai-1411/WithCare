@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Button from './ui/Button';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -70,9 +71,9 @@ export default function ProfileModal({ initial, onClose, onSave }) {
   );
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-scrim/50 flex items-center justify-center z-50 p-4 font-body-md">
+    <div onClick={onClose} className="fixed inset-0 bg-scrim/50 flex items-center justify-center z-50 p-4 font-body-md m3-enter">
       <div onClick={(e) => e.stopPropagation()}
-        className="w-[460px] max-h-[88vh] overflow-y-auto bg-surface-container-lowest rounded-[20px] border border-outline-variant shadow-2xl p-7">
+        className="w-[460px] max-h-[88vh] overflow-y-auto bg-surface-container-lowest rounded-[28px] border border-outline-variant elev-5 p-7 m3-scale-in">
         <div className="flex items-start gap-3 mb-1">
           <div className="w-10 h-10 rounded-xl intelligence-gradient flex items-center justify-center shrink-0">
             <Sym name={isPet ? 'pets' : 'person'} className="text-white text-[22px]" fill />
@@ -164,14 +165,10 @@ export default function ProfileModal({ initial, onClose, onSave }) {
         {err && <div className="text-error text-[12.5px] mt-3">{err}</div>}
 
         <div className="flex justify-end gap-2.5 mt-6">
-          <button onClick={onClose}
-            className="px-5 py-2.5 rounded-full border border-outline-variant text-on-surface-variant text-[14px] font-semibold hover:bg-surface-container">
-            Cancel
-          </button>
-          <button onClick={submit} disabled={busy}
-            className="px-5 py-2.5 rounded-full intelligence-gradient text-white text-[14px] font-semibold shadow-md shadow-primary/20 hover:brightness-105 active:scale-95 transition disabled:opacity-60">
+          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button variant="gradient" onClick={submit} disabled={busy}>
             {busy ? 'Saving…' : editing ? 'Save changes' : 'Add profile'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
