@@ -152,8 +152,14 @@
     </style>
     <style type="text/tailwindcss">
       body { font-family: 'Inter', system-ui, sans-serif; }
-      .intelligence-gradient { background: linear-gradient(135deg, #1a73e8 0%, #734ba1 50%, #a23b47 100%); }
-      .text-gradient { background: linear-gradient(120deg, #1a73e8, #734ba1); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      /* Minimal Google style — flat solid primary (formerly gradients) */
+      .intelligence-gradient, .gemini-gradient { background: #1a73e8; }
+      .text-gradient, .gemini-text { color: rgb(var(--primary)); -webkit-text-fill-color: rgb(var(--primary)); background: none; }
+      .gemini-sweep { animation: none; background: none; background-size: auto; }
+      @keyframes gemini-sweep { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+      /* Radial thinking ripple */
+      @keyframes gemini-ripple { 0% { transform: scale(.6); opacity: .5; } 100% { transform: scale(2.2); opacity: 0; } }
+      @keyframes gemini-orb { 0%,100% { transform: scale(.9); opacity: .55; } 50% { transform: scale(1.12); opacity: 1; } }
       .ai-shimmer { background: linear-gradient(90deg, transparent, rgba(26,115,232,0.06), transparent); background-size: 200% 100%; animation: shimmer 2s infinite linear; }
       @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
       .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; user-select: none; transition: font-variation-settings var(--dur-short) var(--ease-standard); }

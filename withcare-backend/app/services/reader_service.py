@@ -19,6 +19,7 @@ from google.genai import types
 from app.db.database import get_db
 from app.services.gemini_service import get_gemini_client, generate_text
 from app.services.embedding_service import embed_texts, embed_query, cosine_top_k
+from app.services.skills import load_skill
 from app.config import settings
 from app.utils.logger import get_logger
 
@@ -183,12 +184,17 @@ def search(user_id: str, query: str, k: int = 6, label: str | None = None) -> li
              "filename": p["filename"], "document_id": p["doc_id"]} for p, s in top]
 
 
-_ANSWER_SYSTEM = (
+# Prefer the modular Reader skill; fall back to this lean prompt if the file is missing.
+_ANSWER_SYSTEM_FALLBACK = (
     "You answer the user's question using ONLY the document excerpts provided. "
     "Be specific — quote exact figures, dates, limits and terms. If the excerpts don't "
     "contain the answer, say so plainly; never invent details. Cite which document each fact "
     "came from by its label in parentheses. Keep it concise and clear."
 )
+
+
+def _answer_system() -> str:
+    return load_skill("reader") or _ANSWER_SYSTEM_FALLBACK
 
 
 def _dedupe_sources(hits: list[dict]) -> list[dict]:
@@ -212,7 +218,7 @@ async def answer(user_id: str, question: str, label: str | None = None) -> dict:
                 "sources": [], "found": False}
     context = "\n\n".join(f"[Doc: {h['label'] or h['filename']}]\n{h['text']}" for h in hits)
     prompt = f"Document excerpts:\n{context}\n\nQuestion: {question}\n\nAnswer:"
-    text = await generate_text(_ANSWER_SYSTEM, prompt)
+    text = await generate_text(_answer_system(), prompt)
     return {"answer": text.strip(), "sources": _dedupe_sources(hits), "found": True}
 
 

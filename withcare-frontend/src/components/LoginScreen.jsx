@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { fetchAuthConfig, googleLogin, devLogin } from '../services/authService';
+import { GeminiBadge, GeminiDisclaimer } from './ui/GeminiBadge';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -53,11 +54,10 @@ export default function LoginScreen({ onLogin }) {
       <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full intelligence-gradient opacity-10 blur-3xl" />
 
       <div className="relative w-[400px] p-9 bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-2xl text-center">
-        <div className="w-16 h-16 rounded-[20px] intelligence-gradient flex items-center justify-center mx-auto mb-5 shadow-lg shadow-primary/20">
-          <Sym name="auto_awesome" className="text-white text-[32px]" fill />
+        <div className="mx-auto mb-5 w-56 rounded-3xl bg-white p-4 border border-outline-variant/60 elev-2 m3-pop">
+          <img src="/withcare-logo.png" alt="WithCare — Healthcare, with care." className="w-full" draggable={false} />
         </div>
-        <h1 className="font-headline-lg text-[26px] text-on-surface">Welcome to WithCare</h1>
-        <p className="text-[14px] text-on-surface-variant mt-1.5 mb-7">Healthcare navigation, <span className="text-gradient font-semibold">with care</span>. Sign in to continue.</p>
+        <p className="text-[14px] text-on-surface-variant mb-7">Sign in to continue.</p>
 
         {googleEnabled && (
           <div className="flex justify-center mb-3.5">
@@ -85,9 +85,13 @@ export default function LoginScreen({ onLogin }) {
 
         {error && <div className="text-error text-[12.5px] mt-3">{error}</div>}
 
-        <p className="text-[11px] text-on-surface-variant/70 mt-6 flex items-center justify-center gap-1">
-          <Sym name="shield" className="text-[14px]" fill /> Your care data stays private. Powered by Gemini.
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-2.5">
+          <p className="text-[11px] text-on-surface-variant/70 flex items-center justify-center gap-1">
+            <Sym name="shield" className="text-[14px]" fill /> Your care data stays private.
+          </p>
+          <GeminiBadge />
+          <GeminiDisclaimer className="text-center max-w-[300px]" />
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import re
 
 from app.agents.base_agent import BaseAgent
 from app.models.response_models import AgentResult, SourcedStep
-from app.services.gemini_service import generate_with_search
+from app.services.gemini_service import generate_with_search, generate_json_self_correcting
 from app.services.memory_service import write_fact
 from app.services.skills import load_skill
 from app.tools.firestore_tool import query_schemes
@@ -127,9 +127,17 @@ class SchemeAgent(BaseAgent):
             '{"insurer": str, "plan": str, "why_suitable": str, "approx_premium": str, '
             '"buy_url": str, "how_to_buy": str}. Use real insurer names and plausible official URLs.'
         )
+        def _validate(v):
+            if not isinstance(v, list):
+                raise ValueError("expected a JSON array of plans")
+            if v and not isinstance(v[0], dict):
+                raise ValueError("array items must be objects")
+
         try:
-            raw = await generate_with_search(system, prompt)
-            items = self._parse_json_array(raw)
+            # Self-correcting: if the grounded reply isn't valid JSON, re-prompt with the error.
+            items = await generate_json_self_correcting(
+                system, prompt, validate=_validate, retries=1, grounded=True
+            ) or []
         except Exception as e:
             self.logger.warning(f"Private insurance search failed (non-critical): {e}")
             return []

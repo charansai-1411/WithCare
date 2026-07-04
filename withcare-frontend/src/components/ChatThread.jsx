@@ -2,6 +2,9 @@ import React, { useRef, useEffect } from 'react';
 import AgentFlowAnimation from './AgentFlowAnimation';
 import CarePlanCard from './CarePlanCard';
 import PlanCards, { hasPlanStructure } from './PlanCards';
+import GeminiLogo from './ui/GeminiLogo';
+import M3Loader from './ui/M3Loader';
+import RichText from './ui/RichText';
 import { SUGGESTIONS } from '../constants/agents';
 
 function Sym({ name, className = '', fill = false }) {
@@ -12,9 +15,9 @@ const CHIP_ICON = ['medical_services', 'visibility', 'description', 'fitness_cen
 
 function AiAvatar({ size = 40 }) {
   return (
-    <div className="rounded-full intelligence-gradient shrink-0 flex items-center justify-center text-white shadow-md shadow-primary/10"
+    <div className="rounded-full bg-surface-container-lowest border border-outline-variant shrink-0 flex items-center justify-center elev-1"
          style={{ width: size, height: size }}>
-      <Sym name="auto_awesome" className="text-[20px]" fill />
+      <GeminiLogo size={size * 0.58} />
     </div>
   );
 }
@@ -31,8 +34,8 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
         {/* Empty state */}
         {noMessages && (
           <div className="max-w-3xl mx-auto flex flex-col items-center text-center space-y-5 pt-16">
-            <div className="w-20 h-20 rounded-[24px] intelligence-gradient flex items-center justify-center elev-3 shadow-primary/20 m3-pop m3-breathe">
-              <Sym name="auto_awesome" className="text-white text-[40px]" fill />
+            <div className="w-20 h-20 rounded-[24px] bg-surface-container-lowest border border-outline-variant flex items-center justify-center elev-3 m3-pop m3-breathe">
+              <GeminiLogo size={48} />
             </div>
             <h3 className="font-headline-lg text-[28px] text-on-surface m3-enter" style={{ animationDelay: '.08s' }}>How can I help with your care today?</h3>
             <p className="text-[15px] text-on-surface-variant max-w-md m3-enter" style={{ animationDelay: '.14s' }}>Ask about schemes, insurance, nearby facilities, affordable medicines, reminders, or plans — I’ll handle the rest.</p>
@@ -70,19 +73,16 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
                     <AiAvatar />
                     {hasPlanStructure(vm.intro)
                       ? <div className="flex-1 min-w-0"><PlanCards text={vm.intro} variant="accordion" /></div>
-                      : <div className="flex-1 max-w-[85%] bg-surface-container-lowest border border-outline-variant rounded-card rounded-tl-md px-5 py-3.5 text-[15px] leading-relaxed text-on-surface">
-                          {vm.intro}
+                      : <div className="flex-1 max-w-[85%] bg-surface-container-lowest border border-outline-variant rounded-card rounded-tl-md px-5 py-3.5">
+                          <RichText text={vm.intro} />
                         </div>}
                   </div>
                 )}
 
                 {vm.loading && (
-                  <div className="flex gap-4 items-center">
-                    <AiAvatar />
-                    <div className="flex items-center gap-2 text-primary text-sm">
-                      <div className="w-3.5 h-3.5 rounded-full intelligence-gradient animate-pulse" />
-                      <span className="ai-shimmer px-4 py-1 rounded-full border border-primary/20 bg-primary/5">Thinking…</span>
-                    </div>
+                  <div className="flex gap-3 items-center">
+                    <M3Loader size={44} />
+                    <span className="text-[13.5px] font-semibold gemini-text gemini-sweep">Thinking…</span>
                   </div>
                 )}
 
@@ -92,7 +92,11 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
                     <div className="flex-1 min-w-0 space-y-3">
                       {vm.intro && (hasPlanStructure(vm.intro)
                         ? <PlanCards text={vm.intro} variant="accordion" />
-                        : <div className="text-[15px] leading-relaxed text-on-surface">{vm.intro}</div>)}
+                        : <RichText text={vm.intro} />)}
+                      {/* workout / diet plans (full multi-day text rendered as cards) */}
+                      {vm.plans?.map((p, i) => (
+                        <PlanCards key={i} text={p.text} variant="accordion" />
+                      ))}
                       {/* trace pill */}
                       <button onClick={vm.toggleExpand}
                         className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-outline-variant bg-surface-container-lowest hover:bg-surface-container">

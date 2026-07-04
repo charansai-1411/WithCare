@@ -1,4 +1,6 @@
 import React from 'react';
+import { GeminiBadge, GeminiDisclaimer } from '../ui/GeminiBadge';
+import GeminiLogo from '../ui/GeminiLogo';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -60,7 +62,7 @@ export default function SettingsView({ user, location, onEditLocation, onSignOut
 
         <Card title="AI">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl intelligence-gradient flex items-center justify-center"><Sym name="auto_awesome" className="text-white text-[20px]" fill /></div>
+            <div className="w-10 h-10 rounded-xl bg-surface-container border border-outline-variant flex items-center justify-center"><GeminiLogo size={22} /></div>
             <div className="flex-1">
               <div className="text-[14px] font-semibold text-on-surface">Powered by Gemini</div>
               <div className="text-[12.5px] text-on-surface-variant">WithCare navigates care — it never gives medical diagnoses or treatment advice.</div>
@@ -78,8 +80,10 @@ export default function SettingsView({ user, location, onEditLocation, onSignOut
           </Row>
         </Card>
 
-        <div className="text-center text-[12px] text-on-surface-variant py-3">
-          WithCare v1.0 · Made for the Google Gen AI Hackathon
+        <div className="flex flex-col items-center gap-2.5 py-4">
+          <div className="text-[12px] text-on-surface-variant">WithCare v1.0 · Made for the Google Gen AI Hackathon</div>
+          <GeminiBadge />
+          <GeminiDisclaimer className="text-center max-w-md" />
         </div>
       </div>
     </div>

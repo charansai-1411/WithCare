@@ -47,13 +47,9 @@ export default function Sidebar({
   return (
     <div className="h-full w-full bg-surface flex flex-col p-4 font-body-md text-on-surface">
       {/* Logo */}
-      <div className="mb-5 px-2 flex items-center gap-2 m3-enter">
-        <div className="w-9 h-9 rounded-xl intelligence-gradient flex items-center justify-center shrink-0">
-          <Sym name="health_and_safety" className="text-white text-[20px]" fill />
-        </div>
-        <div>
-          <h1 className="font-display-lg text-[20px] leading-none text-gradient">WithCare</h1>
-          <p className="text-[10px] text-on-surface-variant font-semibold tracking-wide uppercase mt-0.5">AI Healthcare Assistant</p>
+      <div className="mb-5 px-1 m3-enter">
+        <div className="rounded-2xl bg-white p-2.5 border border-outline-variant/60 elev-1">
+          <img src="/withcare-logo.png" alt="WithCare — Healthcare, with care." className="w-full max-w-[176px] mx-auto" draggable={false} />
         </div>
       </div>
 
@@ -67,9 +63,9 @@ export default function Sidebar({
           return (
             <button key={item.key} onClick={() => onSelectView(item.key)}
               className={`press relative flex items-center gap-3 w-full px-4 py-2.5 rounded-full transition-all duration-300 text-[14px]
-                ${active ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                ${active ? 'bg-secondary-fixed text-on-secondary-fixed font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
               style={active ? { transitionTimingFunction: 'cubic-bezier(0.05,0.7,0.1,1)' } : undefined}>
-              {active && <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-primary origin-center"
+              {active && <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-secondary origin-center"
                                style={{ animation: 'm3-indicator var(--dur-medium) var(--ease-emph-decel)' }} />}
               <Sym key={active ? 'on' : 'off'} name={item.icon}
                    className={`text-[20px] ${active ? 'm3-pop' : ''}`} fill={active} />
@@ -82,13 +78,13 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto -mx-1 px-1 mt-3">
         {/* Care profiles quick-switch */}
         <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-3 pt-3 pb-1.5">Care profiles</p>
-        <div className="space-y-0.5 m3-stagger">
+        <div className="space-y-2 m3-stagger">
           {profiles.map(p => (
             <div key={p.id} className="relative group"
                  onMouseEnter={() => setHoverProf(p.id)} onMouseLeave={() => setHoverProf(null)}>
               <button onClick={p.onClick}
-                className={`flex items-center gap-3 w-full px-3 py-2 rounded-full transition-colors text-left
-                  ${p.active ? 'bg-secondary-container text-on-secondary-container' : 'hover:bg-surface-container-high text-on-surface'}`}>
+                className={`press flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left bg-surface-container-lowest text-on-surface transition-all duration-200
+                  ${p.active ? 'elev-2 ring-1 ring-primary' : 'elev-1 hover:elev-2'}`}>
                 <Avatar photo={p.photo} initials={p.initials} size={30} />
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-semibold truncate flex items-center gap-1">

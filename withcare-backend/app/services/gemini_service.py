@@ -91,6 +91,59 @@ async def generate_with_search(system_prompt: str, user_prompt: str) -> str:
         raise GeminiServiceError(str(e))
 
 
+def _extract_json(raw: str):
+    """Pull a JSON value out of a model reply (strips ``` fences / prose). Returns (value, error)."""
+    if not raw or not raw.strip():
+        return None, "empty response"
+    import re
+    cleaned = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+    # Prefer the outermost array or object.
+    m = re.search(r"(\[.*\]|\{.*\})", cleaned, flags=re.DOTALL)
+    candidate = m.group(0) if m else cleaned
+    try:
+        return json.loads(candidate), ""
+    except json.JSONDecodeError as e:
+        return None, f"invalid JSON: {e}"
+
+
+async def generate_json_self_correcting(
+    system_prompt: str,
+    user_prompt: str,
+    validate=None,          # optional callable(value) -> raises on invalid
+    retries: int = 1,       # correction attempts after the first try
+    grounded: bool = False, # use Google Search grounding
+):
+    """
+    Self-correcting structured generation: call Gemini, parse+validate the JSON, and if it's
+    malformed (or fails validation) re-prompt the model WITH the error log so it repairs the
+    structure — before the caller renders it. Returns the parsed value, or None if it never
+    produced valid output.
+    """
+    gen = generate_with_search if grounded else generate_text
+    prompt, last_err, raw = user_prompt, "", ""
+    for attempt in range(retries + 1):
+        raw = await gen(system_prompt, prompt)
+        value, err = _extract_json(raw)
+        if value is not None and validate is not None:
+            try:
+                validate(value)
+            except Exception as ve:
+                value, err = None, f"validation failed: {ve}"
+        if value is not None:
+            if attempt:
+                logger.info(f"self-correction succeeded on attempt {attempt + 1}")
+            return value
+        last_err = err
+        logger.warning(f"self-correcting JSON attempt {attempt + 1} failed — {err}")
+        prompt = (
+            f"{user_prompt}\n\n--- YOUR PREVIOUS REPLY COULD NOT BE PARSED ---\n"
+            f"Error: {err}\nWhat you returned:\n{raw[:1500]}\n\n"
+            "Return ONLY valid JSON that fixes this exact error. No prose, no markdown, no code fences."
+        )
+    logger.error(f"self-correcting JSON gave up after {retries + 1} tries: {last_err}")
+    return None
+
+
 def build_tools(declarations: list[dict]) -> list:
     """Turn [{name, description, parameters(json-schema)}] into google-genai Tool objects."""
     fns = [

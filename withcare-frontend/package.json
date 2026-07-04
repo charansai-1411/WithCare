@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@alerix/m3-loading-indicator": "^1.0.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

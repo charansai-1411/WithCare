@@ -13,13 +13,21 @@ const AGENT_KEY = {
 function stepsToPlan(steps) {
   const facilities = [];
   const coverage   = [];
+  const plans      = [];
   const schedule   = { events: [], bothCalendars: false, confirmText: 'Added to your calendar' };
 
   for (const step of steps) {
     const agent = step.agent || '';
     const url   = step.source_url || '';
 
-    if (agent === 'facility_agent') {
+    if (agent === 'diet_agent' || agent === 'workout_agent') {
+      // Full multi-day plan text — rendered as an accordion card in chat.
+      plans.push({
+        kind:  agent === 'diet_agent' ? 'diet' : 'workout',
+        title: step.action,
+        text:  step.detail || '',
+      });
+    } else if (agent === 'facility_agent') {
       const isMaps = url.includes('google.com/maps');
       facilities.push({
         name:        step.action.replace(/^Visit /, '').replace(/ \(nearby\)$/, ''),
@@ -52,6 +60,7 @@ function stepsToPlan(steps) {
     facilities,
     coverage,
     medicines: [],
+    plans,
     schedule: schedule.events.length > 0 ? schedule : null,
   };
 }
@@ -366,6 +375,7 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
       toggleExpand: () => setMessages(prev => prev.map(x => x.id === m.id ? { ...x, expanded: !x.expanded } : x)),
       summaryLabel: trace.length + ' specialists consulted',
       traceLines, traceDots,
+      plans:      plan.plans || [],
       hasFacilities: !!(plan.facilities && plan.facilities.length),
       hasCoverage:   !!(plan.coverage   && plan.coverage.length),
       hasMedicines:  !!(plan.medicines  && plan.medicines.length),
