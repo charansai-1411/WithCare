@@ -11,8 +11,7 @@
 
 > ⚠️ **WithCare provides navigation assistance only. It is not medical advice and never diagnoses, doses, or interprets results.**
 
-<!-- 📸 Screenshot: add docs/screenshots/hero.png — the chat with an agent trace + a results card -->
-> 📸 **Screenshot:** _add `docs/screenshots/hero.png`_ — landing chat with the multi-agent trace and a care card.
+![WithCare — landing chat with the multi-agent trace and a care card](docs/screenshots/hero.png)
 
 ---
 
@@ -27,8 +26,6 @@ In India, the hardest part of healthcare often isn't the medicine — it's the *
 - How do I keep appointments and medicine reminders in sync across the family?
 
 This burden falls hardest on non-experts caring for **others** — elderly parents, children, even pets. WithCare turns one natural-language concern into a coordinated, auditable set of actions, and shows its work.
-
-> 📸 **Screenshot:** _add `docs/screenshots/problem.png`_ — optional problem/impact graphic.
 
 ## What WithCare Does
 
@@ -150,7 +147,7 @@ flowchart TB
   LOOP -- "no more calls" --> EMIT["Emit steps + short reply (SSE)"]
 ```
 
-> 📸 **Screenshot:** _add `docs/screenshots/orchestrator_trace.png`_ — the "N specialists consulted" trace pill expanded.
+![Orchestrator — the "N specialists consulted" trace pill expanded](docs/screenshots/orchestrator_trace.png)
 
 **Why this:** a function-calling loop lets Gemini compose multiple tools for one request ("find a hospital *and* book it") from plain language, using the injected memory to avoid re-asking.
 **Why only this:** the loop is **bounded** (step cap), tools are **validated**, and irreversible/clinical paths are intercepted *outside* the model — so the flexibility of an agent never becomes an unsafe action.
@@ -170,7 +167,7 @@ flowchart LR
   D -- "actionable" --> PASS["→ Orchestrator"]
 ```
 
-> 📸 **Screenshot:** _add `docs/screenshots/router_refusal.png`_ — a clinical question being safely redirected.
+![Router — a clinical question being safely redirected](docs/screenshots/router_refusal.png)
 
 **Why this:** the cheapest, most reliable safety is to decide *before* spending tokens or touching tools. The fast-path is free and instant; the LLM handles nuance ("schemes for her diabetes" is navigation, not clinical).
 **Why only this:** asking the main model to self-police mid-conversation is unreliable and hard to audit — a dedicated, logged gate is deterministic and testable.
@@ -189,7 +186,7 @@ flowchart TB
   MERGE --> STEPS["SourcedSteps → facility cards"]
 ```
 
-> 📸 **Screenshot:** _add `docs/screenshots/facility_card.png`_ — facility results with distance/rating and sort chips.
+![Facility Agent — results with distance/rating and sort chips](docs/screenshots/facility_card.png)
 
 **Why this:** Firestore gives *curated, scheme-aware* Indian hospitals; Maps gives *live* proximity, rating and a clickable pin; Gemini explains *why* each fits. Together they're both trustworthy and current.
 **Why only this:** a pure-LLM hospital list hallucinates addresses and distances. Grounding in Firestore + Maps yields results a caregiver can actually call and drive to.
@@ -210,7 +207,7 @@ flowchart TB
   GOV --> MERGE
 ```
 
-> 📸 **Screenshot:** _add `docs/screenshots/coverage_card.png`_ — govt schemes + private insurance results.
+![Coverage Agent — govt schemes + private insurance results](docs/screenshots/coverage_card.png)
 
 **Why this:** government schemes are stable and belong in a curated store; private plans change constantly and must be fetched **live**. The self-correcting loop turns fragile grounded output into reliable structured cards.
 **Why only this:** a static insurance list goes stale; ungrounded LLM output invents plans and URLs. Split sourcing + self-correction balances freshness with reliability.
@@ -268,7 +265,7 @@ flowchart TB
   KGw2 --> CARD["Rendered as plan cards (chat + Plans view)"]
 ```
 
-> 📸 **Screenshot:** _add `docs/screenshots/plan_cards.png`_ — a diet/workout plan as day-by-day accordion cards.
+![Workout & Diet — a plan as day-by-day accordion cards](docs/screenshots/plan_cards.png)
 
 **Why this:** plans are only useful if they fit *this* person and adapt as health changes; storing structured plans in the KG lets both chat and the Plans view render the same source of truth.
 **Why only this:** generic, re-asked plans ignore the profile; one-plan-per-type keeps history clean and supports the "plans adapt as you improve" story. Coordinating diet with the stored workout is what makes them a program, not two disconnected lists.
@@ -286,7 +283,7 @@ flowchart LR
   NORM --> CARDS["Google-colored product cards (3/row)"]
 ```
 
-> 📸 **Screenshot:** _add `docs/screenshots/product_cards.png`_ — product price-compare cards.
+![Product Agent — price-compare cards](docs/screenshots/product_cards.png)
 
 **Why this:** grounded Search gives **real store links and indicative prices** with no scraper cost and no dependency on a fragile/paid API — and it's structured to swap in real scraping later.
 **Why only this:** live per-store scraping is costly and brittle; the agent only compares what the user asked for and **never suggests or doses a medicine** — a hard safety line.
@@ -305,7 +302,7 @@ flowchart TB
   TOPK --> ANS["Gemini answers ONLY from excerpts + cites label"]
 ```
 
-> 📸 **Screenshot:** _add `docs/screenshots/reader.png`_ — asking a policy/report and getting a cited answer.
+![Reader — asking a policy/report and getting a cited answer](docs/screenshots/reader.png)
 
 **Why this:** grounded, cited document Q&A is the safe way to answer "what's my room-rent limit?" — the model can't invent, only quote. Multimodal OCR means a phone photo of a prescription works.
 **Why only this:** stuffing whole documents into every prompt is expensive and lossy; chunk-embed-retrieve is the standard scalable RAG pattern, and answer-only-from-excerpts is what prevents hallucinated medical figures.
@@ -320,8 +317,6 @@ flowchart LR
   KG -- "get_profile_memory (compact block)" --> ORCH["Injected into every turn"]
   KG -- "get_profile_graph" --> VIEW["Profile dashboard + Plans/Tasks views"]
 ```
-
-> 📸 **Screenshot:** _add `docs/screenshots/memory.png`_ — a care profile dashboard / Memory manager.
 
 **Why this:** structured, typed memory is compact enough to inject every turn, so WithCare **never re-asks** what it knows and stays useful across sessions and across the whole family.
 **Why only this:** replaying raw chat history is expensive and noisy; a typed graph is queryable, renders the Profile/Plans/Tasks views, and can migrate to a real graph DB later without changing callers. See [`withcare-backend/MEMORY.md`](withcare-backend/MEMORY.md) for the schema.
