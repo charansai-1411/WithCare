@@ -16,81 +16,9 @@
       } catch (e) {}
     </script>
 
-    <!-- WithCare Material 3 / Gemini design system (from Stitch + Claude blend) -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- WithCare Material 3 / Gemini design system — Tailwind is compiled into the bundle (see tailwind.config.js) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
-    <script>
-      const c = (v) => `rgb(var(--${v}) / <alpha-value>)`;
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              background: c('background'),
-              surface: c('surface'),
-              'surface-bright': c('surface-bright'),
-              'surface-dim': c('surface-dim'),
-              'surface-container-lowest': c('surface-container-lowest'),
-              'surface-container-low': c('surface-container-low'),
-              'surface-container': c('surface-container'),
-              'surface-container-high': c('surface-container-high'),
-              'surface-container-highest': c('surface-container-highest'),
-              'surface-variant': c('surface-variant'),
-              'on-surface': c('on-surface'),
-              'on-surface-variant': c('on-surface-variant'),
-              'inverse-surface': c('inverse-surface'),
-              'inverse-on-surface': c('inverse-on-surface'),
-              outline: c('outline'),
-              'outline-variant': c('outline-variant'),
-              primary: c('primary'),
-              'on-primary': c('on-primary'),
-              'primary-container': c('primary-container'),
-              'on-primary-container': c('on-primary-container'),
-              'primary-fixed': c('primary-fixed'),
-              'on-primary-fixed': c('on-primary-fixed'),
-              'inverse-primary': c('inverse-primary'),
-              secondary: c('secondary'),
-              'on-secondary': c('on-secondary'),
-              'secondary-container': c('secondary-container'),
-              'on-secondary-container': c('on-secondary-container'),
-              'secondary-fixed': c('secondary-fixed'),
-              'on-secondary-fixed': c('on-secondary-fixed'),
-              tertiary: c('tertiary'),
-              'on-tertiary': c('on-tertiary'),
-              'tertiary-container': c('tertiary-container'),
-              'on-tertiary-container': c('on-tertiary-container'),
-              'tertiary-fixed': c('tertiary-fixed'),
-              'on-tertiary-fixed': c('on-tertiary-fixed'),
-              error: c('error'),
-              'on-error': c('on-error'),
-              'error-container': c('error-container'),
-              'on-error-container': c('on-error-container'),
-              // Google product colors (semantic, adapt in dark)
-              'g-blue': c('g-blue'),
-              'g-red': c('g-red'),
-              'g-green': c('g-green'),
-              'g-yellow': c('g-yellow'),
-              'g-green-text': c('g-green-text'),
-              'g-green-tint': c('g-green-tint'),
-              scrim: c('scrim'),
-            },
-            borderRadius: { card: '16px', action: '24px' },
-            spacing: { unit: '8px', gutter: '16px' },
-            fontFamily: {
-              'body-md': ['Inter', 'system-ui', 'sans-serif'],
-              'body-lg': ['Inter', 'system-ui', 'sans-serif'],
-              'label-md': ['Inter', 'system-ui', 'sans-serif'],
-              'title-lg': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-              'headline-lg': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-              'display-lg': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-              'button-text': ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-              sans: ['Inter', 'system-ui', 'sans-serif'],
-            },
-          },
-        },
-      };
-    </script>
     <style>
       /* ── M3 tokens as RGB triplets: light (default) ── */
       :root {
@@ -150,7 +78,7 @@
         --e5: 0 4px 4px rgba(0,0,0,.34), 0 8px 12px 6px rgba(0,0,0,.30);
       }
     </style>
-    <style type="text/tailwindcss">
+    <style>
       body { font-family: 'Inter', system-ui, sans-serif; }
       /* Minimal Google style — flat solid primary (formerly gradients) */
       .intelligence-gradient, .gemini-gradient { background: #1a73e8; }
