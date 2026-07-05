@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { AGENTS } from '../constants/agents';
 import { streamChat } from '../services/api';
+import { getValidTokens } from '../services/connectorsService';
 
 const AGENT_KEY = {
   orchestrator:  'orchestrator',
@@ -255,6 +256,12 @@ export function useChat({ onSave, location = {}, profile = null, userId = '', co
     }] : [];
     const forMember = profile ? (profile.is_self ? 'self' : profile.name) : 'self';
 
+    // Per-user connector tokens (fresh at send-time). The connected list is derived
+    // from tokens that are still valid, so an expired connector reads as disconnected
+    // and never falls back to a shared account — users can't collide.
+    const connectorTokens  = getValidTokens(userId);
+    const activeConnectors = Object.keys(connectorTokens);
+
     streamChat(
       {
         message: outgoing,
@@ -266,7 +273,8 @@ export function useChat({ onSave, location = {}, profile = null, userId = '', co
         familyProfile,
         forMember,
         attachmentDocIds: atts.map(a => a.docId).filter(Boolean),
-        connectors,
+        connectors: activeConnectors.length ? activeConnectors : connectors,
+        connectorTokens,
       },
       {
         onChunk(chunk) {

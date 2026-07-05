@@ -26,6 +26,7 @@ from app.agents.product_agent import ProductAgent
 from app.agents.reminder_agent import ReminderAgent
 from app.agents.scheme_agent import SchemeAgent
 from app.agents.workout_agent import WorkoutAgent
+from app.config import settings
 from app.db.database import get_db
 from app.models.request_models import ChatRequest
 from app.models.response_models import SourcedStep, StreamChunk
@@ -258,6 +259,13 @@ TOOL_DECLS = [
     },
 ]
 
+def _strict_user_token() -> bool:
+    """In production, connector actions REQUIRE the user's own OAuth token — never the
+    shared token.json — so nothing lands in the developer's account and users can't
+    collide. In local dev the token.json fallback stays enabled so testing works."""
+    return (settings.environment or "").lower() == "production"
+
+
 _AGENT_FOR_TOOL = {
     "find_facilities": ("facility_agent", "Finding hospitals and facilities nearby..."),
     "find_coverage": ("scheme_agent", "Searching schemes and insurance..."),
@@ -337,6 +345,8 @@ class WithCareAgent:
             "full_context": request.message,
             "memory": memory,
             "connectors": [c.lower() for c in (request.connected_connectors or [])],
+            # Per-user OAuth access tokens — actions run on the user's OWN Google account.
+            "connector_tokens": {k.lower(): v for k, v in (request.connector_tokens or {}).items()},
         }
 
         # ── GUARD: confirmation gate — the ONLY path that executes an irreversible action ──
@@ -344,7 +354,17 @@ class WithCareAgent:
         if pending:
             decision = classify_yes_no(request.message)
             if decision == "yes":
+                # Strict: with real OAuth, the booking must run on the user's OWN fresh token.
+                # If it expired between staging and confirming, refuse — never use the dev account.
+                if _strict_user_token() and not base_ctx["connector_tokens"].get("calendar"):
+                    self._clear_pending(sid)
+                    yield StreamChunk(type="error", agent="action_agent",
+                                      content="Your Google Calendar session has expired. Please reconnect "
+                                              "Google Calendar on the Connectors page, then ask me to book again.")
+                    return
                 yield StreamChunk(type="thinking", content="Booking your appointment...", agent="action_agent")
+                # Use the freshest per-user token from THIS "yes" request.
+                pending["base_ctx"]["connector_tokens"] = base_ctx["connector_tokens"]
                 async for chunk in self._commit(pending):
                     yield chunk
                 self._clear_pending(sid)
@@ -452,6 +472,25 @@ class WithCareAgent:
                               agent="orchestrator")
 
     # ── tool dispatch ─────────────────────────────────────────────────────────────
+    def _connector_blocked(self, base_ctx: dict, connector: str) -> dict | None:
+        """Refusal dict if `connector` can't be used for THIS user, else None.
+
+        Strict rule: when real OAuth is configured, the action REQUIRES the user's own
+        access token — we never fall back to the shared/dev account, so users can't
+        collide and nothing lands in the developer's account. In local dev (no OAuth
+        client id set) the token.json fallback is allowed so testing still works."""
+        label = {"calendar": "Google Calendar", "gmail": "Gmail",
+                 "drive": "Google Drive"}.get(connector, connector)
+        if connector not in base_ctx.get("connectors", []):
+            return {"status": "not_connected", "connector": label,
+                    "note": f"You CANNOT do this — the user hasn't connected {label}. Tell them to "
+                            f"connect it on the Connectors page (one click). Do NOT claim it was done."}
+        if _strict_user_token() and not base_ctx.get("connector_tokens", {}).get(connector):
+            return {"status": "session_expired", "connector": label,
+                    "note": f"You CANNOT do this — the user's {label} session has expired. Ask them to "
+                            f"reconnect {label} on the Connectors page, then try again. Do NOT claim it was done."}
+        return None
+
     async def _run_tool(self, name: str, args: dict, base_ctx: dict, collected: list) -> dict:
         if name == "find_facilities":
             ctx = {**base_ctx, "condition": args.get("condition", ""),
@@ -485,12 +524,9 @@ class WithCareAgent:
             return {"result": "Found these listings (cheapest first):\n" + "\n".join(lines)}
 
         if name == "set_reminder":
-            if "calendar" not in base_ctx.get("connectors", []):
-                return {"status": "not_connected", "connector": "Google Calendar",
-                        "note": "You CANNOT set this reminder — the user hasn't connected Google "
-                                "Calendar. Tell them you can't set reminders until they connect it, "
-                                "and point them to the Connectors page to connect Google Calendar in "
-                                "one click. Do NOT claim the reminder was set."}
+            blocked = self._connector_blocked(base_ctx, "calendar")
+            if blocked:
+                return blocked
             ctx = {**base_ctx,
                    "recipient": args.get("recipient", ""), "message": args.get("message", ""),
                    "date": args.get("date", ""), "time": args.get("time", ""),
@@ -548,10 +584,11 @@ class WithCareAgent:
             data = node.get("data") or {}
             cal_id = data.get("calendar_id") or "primary"
             event_id = data.get("event_id") or ""
+            cal_token = base_ctx.get("connector_tokens", {}).get("calendar")
 
             if name == "cancel_reminder":
                 if event_id:
-                    await delete_calendar_event(cal_id, event_id)
+                    await delete_calendar_event(cal_id, event_id, access_token=cal_token)
                 delete_node(uid, node["id"])
                 return {"result": f"Cancelled {pname}'s reminder '{node['name']}' and removed its "
                                   "calendar event."}
@@ -569,7 +606,8 @@ class WithCareAgent:
             if event_id:
                 await update_calendar_event(cal_id, event_id, summary=f"Reminder: {new_msg}",
                                             start_datetime=start_iso, end_datetime=end_iso,
-                                            recurrence=_RRULE.get(new_rec), reminder_minutes=[new_lead])
+                                            recurrence=_RRULE.get(new_rec), reminder_minutes=[new_lead],
+                                            access_token=cal_token)
             # Replace the KG node in place (its name may have changed); keep the same event.
             delete_node(uid, node["id"])
             write_fact(uid, pid, "reminder", new_msg,
@@ -651,12 +689,9 @@ class WithCareAgent:
                     "note": "Answer ONLY from these excerpts; cite the document label in parentheses."}
 
         if name == "schedule_appointment":
-            if "calendar" not in base_ctx.get("connectors", []):
-                return {"status": "not_connected", "connector": "Google Calendar",
-                        "note": "You CANNOT schedule this — the user hasn't connected Google "
-                                "Calendar. Tell them you can't book appointments until they connect "
-                                "it, and point them to the Connectors page to connect Google Calendar "
-                                "in one click. Do NOT stage or claim any booking."}
+            blocked = self._connector_blocked(base_ctx, "calendar")
+            if blocked:
+                return blocked
             missing = [k for k in ("procedure", "date") if not args.get(k)]
             if missing:
                 return {"status": "need_more", "missing": missing,

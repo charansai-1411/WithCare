@@ -26,6 +26,10 @@ class ActionAgent(BaseAgent):
         for_member     = context.get("for_member", "self")
         family_profile = context.get("family_profile", [])
         care_plan_steps = context.get("care_plan_steps", [])
+        # Per-user OAuth tokens — book/save on the USER's own account, not a shared one.
+        tokens         = context.get("connector_tokens", {}) or {}
+        cal_token      = tokens.get("calendar")
+        drive_token    = tokens.get("drive")
 
         # Build event title: "Eye Check-up — LV Prasad Eye Institute"
         summary = procedure
@@ -74,7 +78,7 @@ class ActionAgent(BaseAgent):
         }
 
         try:
-            event = await create_calendar_event(calendar_id=primary_calendar_id, **event_data)
+            event = await create_calendar_event(calendar_id=primary_calendar_id, access_token=cal_token, **event_data)
             html_link = event["html_link"]
             event_id  = event["event_id"]
         except CalendarActionError as e:
@@ -97,7 +101,7 @@ class ActionAgent(BaseAgent):
         for member in family_profile:
             if member.get("consent_given") and member.get("calendar_id") and member["calendar_id"] != primary_calendar_id:
                 try:
-                    await sync_to_family_calendar(member["calendar_id"], event_data, True)
+                    await sync_to_family_calendar(member["calendar_id"], event_data, True, access_token=cal_token)
                     synced.append(member.get("name", "family member"))
                 except CalendarActionError:
                     pass
@@ -109,11 +113,11 @@ class ActionAgent(BaseAgent):
         care_plan_context = context.get("care_plan_context")
         if care_plan_context:
             try:
-                doc = await save_care_plan_to_drive(care_plan_context)
+                doc = await save_care_plan_to_drive(care_plan_context, access_token=drive_token)
                 if doc.get("doc_url"):
                     for member in family_profile:
                         if member.get("consent_given") and member.get("email"):
-                            await share_doc_with_email(doc["doc_id"], member["email"])
+                            await share_doc_with_email(doc["doc_id"], member["email"], access_token=drive_token)
                     drive_step = SourcedStep(
                         step_number=2,
                         action="Care Plan saved to Google Drive",

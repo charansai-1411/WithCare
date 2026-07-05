@@ -6,6 +6,9 @@
 // that need a connector the user hasn't connected yet.
 
 const KEY = 'withcare.connectors';
+// Access tokens live in sessionStorage (per-tab, short-lived) — never localStorage.
+// Keyed by user so two people signing in on the same browser never share a token.
+const TOK_KEY = 'withcare.tokens';
 
 export const CONNECTORS = {
   calendar: { label: 'Google Calendar', scope: 'https://www.googleapis.com/auth/calendar.events' },
@@ -40,6 +43,51 @@ export function connectedList(userId) {
   return Object.keys(u).filter((k) => u[k]);
 }
 
+// ── Per-user access tokens ──────────────────────────────────────────────────
+// Stored in sessionStorage as { [userId]: { [key]: { token, exp } } }.
+function readTokens() {
+  try { return JSON.parse(sessionStorage.getItem(TOK_KEY) || '{}'); } catch { return {}; }
+}
+function writeTokens(o) {
+  try { sessionStorage.setItem(TOK_KEY, JSON.stringify(o)); } catch { /* ignore */ }
+}
+
+export function setToken(userId, key, token, expiresIn) {
+  const all = readTokens();
+  const u = all[userId || 'anon'] || {};
+  // Expire 60s early to avoid using a token that dies mid-request.
+  u[key] = { token, exp: Date.now() + (Number(expiresIn) || 3600) * 1000 - 60000 };
+  all[userId || 'anon'] = u;
+  writeTokens(all);
+}
+
+export function clearToken(userId, key) {
+  const all = readTokens();
+  const u = all[userId || 'anon'];
+  if (u && u[key]) { delete u[key]; all[userId || 'anon'] = u; writeTokens(all); }
+}
+
+export function getToken(userId, key) {
+  const rec = (readTokens()[userId || 'anon'] || {})[key];
+  if (!rec || !rec.token) return null;
+  if (Date.now() >= rec.exp) { clearToken(userId, key); return null; }  // expired
+  return rec.token;
+}
+
+// Map of connector → valid access token for this user. Only non-expired tokens.
+// The chat request derives its connected-connectors list from these keys, so a
+// connector with an expired token is treated as disconnected (agent asks to reconnect)
+// instead of silently falling back to a shared account.
+export function getValidTokens(userId) {
+  const u = readTokens()[userId || 'anon'] || {};
+  const out = {};
+  for (const key of Object.keys(u)) {
+    const t = getToken(userId, key);
+    if (t) out[key] = t;
+  }
+  return out;
+}
+
 // Pop the real Google consent screen for a connector's scopes. Resolves with the access token
 // on approval, rejects if the library/clientId is unavailable or the user cancels.
 export function requestGoogleConsent(clientId, key) {
@@ -53,7 +101,7 @@ export function requestGoogleConsent(clientId, key) {
         client_id: clientId,
         scope,
         callback: (resp) => {
-          if (resp && resp.access_token) resolve(resp.access_token);
+          if (resp && resp.access_token) resolve({ token: resp.access_token, expiresIn: resp.expires_in });
           else reject(new Error(resp?.error || 'consent_denied'));
         },
         error_callback: (err) => reject(new Error(err?.type || 'consent_cancelled')),

@@ -14,15 +14,20 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def _gmail_service():
-    if not os.path.exists("token.json"):
-        return None
+def _gmail_service(access_token: str | None = None):
     try:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
         from googleapiclient.discovery import build
 
-        creds = Credentials.from_authorized_user_file("token.json")
+        # Per-user path: send from the user's own Gmail using their access token.
+        if access_token:
+            return build("gmail", "v1", credentials=Credentials(token=access_token))
+
+        token_path = os.environ.get("WITHCARE_TOKEN_PATH", "token.json")
+        if not os.path.exists(token_path):
+            return None
+        creds = Credentials.from_authorized_user_file(token_path)
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
@@ -34,12 +39,12 @@ def _gmail_service():
         return None
 
 
-async def send_email(to: str, subject: str, body: str) -> dict:
+async def send_email(to: str, subject: str, body: str, access_token: str | None = None) -> dict:
     """Send a plain-text email. Returns {ok: bool, error?: str}. Never raises."""
     if not to:
         return {"ok": False, "error": "no recipient"}
     try:
-        service = _gmail_service()
+        service = _gmail_service(access_token)
         if not service:
             return {"ok": False, "error": "gmail scope not authorized"}
         msg = MIMEText(body)

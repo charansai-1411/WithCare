@@ -11,7 +11,7 @@ import ReaderView from './components/views/ReaderView';
 import HealthView from './components/views/HealthView';
 import ConnectorsView from './components/views/ConnectorsView';
 import SettingsView from './components/views/SettingsView';
-import { getConnections, setConnected, requestGoogleConsent } from './services/connectorsService';
+import { getConnections, setConnected, requestGoogleConsent, setToken, clearToken } from './services/connectorsService';
 import { fetchAuthConfig } from './services/authService';
 import { useChat, dbMsgToUiMsg } from './hooks/useChat';
 import { getTheme, toggleTheme } from './services/themeService';
@@ -55,7 +55,9 @@ export default function App() {
   const connectConnector = useCallback(async (key) => {
     try {
       if (oauthClientId && window.google?.accounts?.oauth2) {
-        await requestGoogleConsent(oauthClientId, key);  // real Google consent popup
+        // Real Google consent popup — resolves with THIS user's access token for the connector.
+        const { token, expiresIn } = await requestGoogleConsent(oauthClientId, key);
+        setToken(userId, key, token, expiresIn);  // scoped to this user; actions run on their account
       }
       // (no client id → dev/local: connect directly so testing still works)
       setConnected(userId, key, true);
@@ -68,6 +70,7 @@ export default function App() {
 
   const disconnectConnector = useCallback((key) => {
     setConnected(userId, key, false);
+    clearToken(userId, key);
     setConnections(getConnections(userId));
     if (key === 'fit') setActiveView(v => (v === 'health' ? 'connectors' : v));
   }, [userId]);

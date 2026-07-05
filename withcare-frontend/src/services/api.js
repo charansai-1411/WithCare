@@ -8,7 +8,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
  * Calls onDone(carePlan) when the done event arrives.
  * Calls onError(message) on error events or network failures.
  */
-export async function streamChat({ message, sessionId, userId, location, coordinates, familyProfile, forMember, history, attachmentDocIds, connectors }, { onChunk, onDone, onError }) {
+export async function streamChat({ message, sessionId, userId, location, coordinates, familyProfile, forMember, history, attachmentDocIds, connectors, connectorTokens }, { onChunk, onDone, onError }) {
   try {
     const response = await fetch(`${BASE_URL}/chat/stream`, {
       method: 'POST',
@@ -25,6 +25,7 @@ export async function streamChat({ message, sessionId, userId, location, coordin
         history: history || [],
         attachment_document_ids: attachmentDocIds || [],
         connected_connectors: connectors || [],
+        connector_tokens: connectorTokens || {},
       }),
     });
 

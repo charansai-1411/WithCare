@@ -15,18 +15,22 @@ SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 _EVENT_TZ = "Asia/Kolkata"
 
 
-def get_calendar_service():
+def get_calendar_service(access_token: str | None = None):
     """
     Returns a Google Calendar API service object.
-    Tries OAuth token.json first (local dev), falls back to service account ADC (Cloud Run).
+    If a per-user OAuth `access_token` is supplied, the service acts on THAT user's own
+    account (so users never collide). Otherwise falls back to the shared token.json.
     """
     try:
         from google.oauth2.credentials import Credentials
-        from google_auth_oauthlib.flow import InstalledAppFlow
         from google.auth.transport.requests import Request
         from googleapiclient.discovery import build
 
-        token_path = "token.json"
+        # Per-user path: the browser-issued access token already carries the scopes.
+        if access_token:
+            return build("calendar", "v3", credentials=Credentials(token=access_token))
+
+        token_path = os.environ.get("WITHCARE_TOKEN_PATH", "token.json")
         creds = None
 
         if os.path.exists(token_path):
@@ -59,6 +63,7 @@ async def create_calendar_event(
     attendee_emails: list[str] | None = None,
     reminder_minutes: list[int] | None = None,
     recurrence: str | None = None,
+    access_token: str | None = None,
 ) -> dict:
     """
     Creates a Google Calendar event.
@@ -66,9 +71,10 @@ async def create_calendar_event(
     start_datetime / end_datetime must be ISO 8601 strings (e.g. 2026-07-10T10:00:00)
     - reminder_minutes: popup+email reminders this many minutes before (e.g. [10] or [60]).
     - recurrence: an RRULE string for recurring events (e.g. "RRULE:FREQ=DAILY").
+    - access_token: the user's OAuth token — books on their own calendar when provided.
     """
     try:
-        service = get_calendar_service()
+        service = get_calendar_service(access_token)
 
         event_body: dict = {
             "summary": summary,
@@ -101,13 +107,13 @@ async def create_calendar_event(
         raise CalendarActionError(f"Failed to create calendar event: {e}")
 
 
-async def delete_calendar_event(calendar_id: str, event_id: str) -> bool:
+async def delete_calendar_event(calendar_id: str, event_id: str, access_token: str | None = None) -> bool:
     """Delete a calendar event. Best-effort — returns True on success, False otherwise
     (a missing event or auth issue must not crash the caller)."""
     if not event_id:
         return False
     try:
-        service = get_calendar_service()
+        service = get_calendar_service(access_token)
         service.events().delete(calendarId=calendar_id or "primary", eventId=event_id).execute()
         logger.info(f"Calendar event deleted: {event_id}")
         return True
@@ -124,12 +130,13 @@ async def update_calendar_event(
     end_datetime: str | None = None,
     recurrence: str | None = None,
     reminder_minutes: list[int] | None = None,
+    access_token: str | None = None,
 ) -> bool:
     """Patch an existing calendar event in place (only the fields provided). Best-effort."""
     if not event_id:
         return False
     try:
-        service = get_calendar_service()
+        service = get_calendar_service(access_token)
         patch: dict = {}
         if summary is not None:
             patch["summary"] = summary
@@ -159,6 +166,7 @@ async def sync_to_family_calendar(
     member_calendar_id: str,
     event_data: dict,
     member_consent: bool,
+    access_token: str | None = None,
 ) -> dict | None:
     """
     Creates the same event on a family member's calendar if consent is given. (P0-7)
@@ -174,6 +182,7 @@ async def sync_to_family_calendar(
 
     return await create_calendar_event(
         calendar_id=member_calendar_id,
+        access_token=access_token,
         summary=event_data["summary"],
         description=event_data["description"],
         start_datetime=event_data["start_datetime"],

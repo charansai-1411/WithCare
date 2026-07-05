@@ -71,6 +71,9 @@ class ReminderAgent(BaseAgent):
     async def run(self, context: dict) -> AgentResult:
         self.logger.info("ReminderAgent starting")
         user_id = context.get("user_id", "")
+        # Per-user OAuth tokens — the reminder event + email use the USER's own account.
+        _tokens = context.get("connector_tokens", {}) or {}
+        cal_token, gmail_token = _tokens.get("calendar"), _tokens.get("gmail")
         message = context.get("message") or context.get("reminder_message") or "Reminder"
         recurrence = (context.get("recurrence") or "none").lower()
         try:
@@ -108,6 +111,7 @@ class ReminderAgent(BaseAgent):
                 attendee_emails=[recip_email] if recip_email else None,
                 reminder_minutes=[lead],
                 recurrence=rrule,
+                access_token=cal_token,
             )
             event_link = event.get("html_link", "")
             event_id = event.get("event_id", "")
@@ -119,7 +123,8 @@ class ReminderAgent(BaseAgent):
         if recip_email:
             r = await send_email(recip_email, summary,
                                  f"Hi {recip_name}, this is a WithCare reminder: {message} "
-                                 f"({when} at {time_str}).")
+                                 f"({when} at {time_str}).",
+                                 access_token=gmail_token)
             emailed = bool(r.get("ok"))
 
         # Record in the knowledge graph.

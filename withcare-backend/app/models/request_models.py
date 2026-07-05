@@ -40,3 +40,4 @@ class ChatRequest(BaseModel):
     history: list[ConversationTurn] = Field(default_factory=list, description="Previous turns in this conversation")
     attachment_document_ids: list[str] = Field(default_factory=list, description="Reader document ids attached to THIS message — the agent reads their text directly")
     connected_connectors: list[str] = Field(default_factory=list, description="Connectors the user has authorized (e.g. 'calendar','gmail','drive','fit') — gate actions on these")
+    connector_tokens: dict[str, str] = Field(default_factory=dict, description="Per-connector Google OAuth access tokens for THIS user (e.g. {'calendar': 'ya29...'}) — actions run on the user's own account, so users never collide")
