@@ -430,6 +430,12 @@ class WithCareAgent:
                 if not calls:
                     break
                 contents.append(cand.content)
+                # Gemini requires the reply to a function-call turn to contain EXACTLY one
+                # function_response part per function_call part, all in a SINGLE user turn.
+                # When the model calls e.g. plan_workout AND plan_diet together, we must
+                # batch their responses into one Content — appending them separately trips a
+                # 400 "number of function response parts must equal function call parts".
+                response_parts = []
                 for call in calls:
                     tool_name = call.name
                     args = dict(call.args or {})
@@ -444,9 +450,10 @@ class WithCareAgent:
                         result = {"error": f"{tool_name} could not be completed ({te}).",
                                   "note": "Tell the user this specific part failed, then continue "
                                           "with everything else that succeeded."}
-                    contents.append(types.Content(role="user", parts=[
+                    response_parts.append(
                         types.Part.from_function_response(name=tool_name, response=result)
-                    ]))
+                    )
+                contents.append(types.Content(role="user", parts=response_parts))
         except Exception as e:
             logger.exception(f"agent loop failed: {e}")
             yield StreamChunk(type="error", content="Something went wrong — please try again.", agent="orchestrator")
