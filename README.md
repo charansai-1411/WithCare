@@ -1,108 +1,382 @@
-# WithCare — Healthcare navigation, with care
+<h1 align="center">WithCare</h1>
 
-WithCare is a multi-agent AI healthcare **navigation** assistant for India. It helps
-caregivers find hospitals, discover the government schemes and private insurance a person
-qualifies for, and book appointments — for themselves, family members, and pets — through a
-natural chat. It **never** gives medical advice; it navigates.
+<p align="center">
+  <b>Healthcare navigation, with care.</b><br />
+  A multi-agent AI care-navigation assistant for India — for you, your family, and your pets.
+</p>
 
-Built on **Google Gemini (Vertex AI)** with Google Calendar, Drive, and Maps integrations.
+<p align="center">
+  <i>Gemini reasons · typed tools act · a knowledge graph remembers · code-level guardrails supervise.</i>
+</p>
 
-> ⚠️ WithCare provides navigation assistance only. It is not medical advice.
+> ⚠️ **WithCare provides navigation assistance only. It is not medical advice and never diagnoses, doses, or interprets results.**
+
+<!-- 📸 Screenshot: add docs/screenshots/hero.png — the chat with an agent trace + a results card -->
+> 📸 **Screenshot:** _add `docs/screenshots/hero.png`_ — landing chat with the multi-agent trace and a care card.
+
+---
+
+## The Problem
+
+In India, the hardest part of healthcare often isn't the medicine — it's the **navigation**. A caregiver managing a parent with diabetes has to answer, alone and across a dozen websites:
+
+- *Which* hospital nearby has the right specialty and accepts our scheme?
+- *Which* government scheme (Ayushman Bharat / PM-JAY, Aarogyasri, CGHS…) or private policy actually covers this person?
+- Where's the cheapest strip of this medicine or a BP monitor?
+- What does this insurance policy / lab report actually say?
+- How do I keep appointments and medicine reminders in sync across the family?
+
+This burden falls hardest on non-experts caring for **others** — elderly parents, children, even pets. WithCare turns one natural-language concern into a coordinated, auditable set of actions, and shows its work.
+
+> 📸 **Screenshot:** _add `docs/screenshots/problem.png`_ — optional problem/impact graphic.
+
+## What WithCare Does
+
+A caregiver in Hyderabad opens WithCare, adds a **care profile** for their mother (68, type-2 diabetes, hypertension), and simply chats. WithCare:
+
+- **routes** the concern to the right specialist agents,
+- **grounds** every external fact in real data (Maps, Firestore, Google Search, the user's own uploaded documents),
+- **remembers** the person in a per-profile knowledge graph so it never re-asks,
+- **gates** every irreversible or clinical action in code, and
+- **shows proof** — an inspectable "N specialists consulted" trace and result cards.
 
 ---
 
-## Highlights
+# Full System Architecture
 
-- **Conversational, memory-aware.** A per-person **knowledge graph** remembers conditions,
-  past appointments, and coverage explored — so it never re-asks what it already knows and
-  stays useful across sessions.
-- **Care profiles** for people **and pets** (name, relation/species, age, conditions, Gmail,
-  photo), each an openable dashboard of everything the assistant knows about them.
-- **Coverage search** returns **government schemes** (Firestore) *and* **private insurance**
-  (Gemini + Google Search grounding), then asks eligibility follow-ups.
-- **Appointment scheduling** with a hard **confirm-before-booking** guardrail and Google
-  Calendar + Drive sync.
-- **Google Sign-In** (with a dev/guest fallback) and per-user conversation history.
-- **Two interchangeable brains behind a flag:** a deterministic pipeline and a newer **agentic
-  core** (LLM function-calling over the memory + a toolbox, with control-flow guardrails).
-  Toggle with `USE_AGENT`.
-- **Eval/regression suite** (`tests/eval`) that encodes desired behavior as executable
-  assertions — the safety net against prompt-by-prompt regressions.
+WithCare's core idea: **separate reasoning from action.** Gemini decides *what* to do from natural language; typed tools with code-level guardrails decide *whether and how* it actually happens.
 
-## Architecture (short)
+```mermaid
+flowchart TB
+  subgraph Client["🖥️ Frontend — React + Vite + Tailwind (Material 3)"]
+    UI["Chat · Reader · Health · Tasks · Plans · Profiles · Connectors"]
+  end
 
+  subgraph API["⚙️ Backend — FastAPI (SSE streaming)"]
+    direction TB
+    ROUTE{{"Intake Router<br/>clinical + ambiguous gate"}}
+    ORCH["Orchestrator — WithCareAgent<br/>Gemini function-calling loop"]
+    CONF{{"Confirmation gate<br/>(pending_actions, DB-persisted)"}}
+  end
+
+  subgraph Agents["🤖 Specialist agents & tools"]
+    direction LR
+    FA["Facility"]; SA["Coverage"]; RA["Reminder"]; AA["Scheduling"]
+    WA["Workout"]; DA["Diet"]; PA["Product"]; RD["Reader / RAG"]
+  end
+
+  subgraph Google["☁️ Gemini + Google services"]
+    GEM["Gemini 2.5 Flash<br/>function-calling · grounded Search · embeddings"]
+    GMAPS["Maps"]; GCAL["Calendar"]; GMAIL["Gmail"]; GDRIVE["Drive"]; GFIT["Fit"]
+  end
+
+  subgraph Data["🗄️ Data"]
+    KG[("Knowledge-graph memory<br/>SQLite — per profile")]
+    DOCS[("Documents + vectors<br/>SQLite")]
+    FS[("Firestore<br/>schemes · facilities")]
+  end
+
+  UI -- "POST /chat/stream (SSE)" --> ROUTE
+  ROUTE -- "clinical → refuse + redirect" --> UI
+  ROUTE -- "safe" --> ORCH
+  ORCH <-- "tool calls / results" --> Agents
+  ORCH <--> GEM
+  ORCH -- "stage irreversible action" --> CONF
+  CONF -- "user says 'yes'" --> AA
+
+  FA --> GMAPS & FS & GEM
+  SA --> FS & GEM
+  RA --> GCAL & GMAIL
+  AA --> GCAL & GDRIVE
+  WA --> GEM
+  DA --> GEM
+  PA --> GEM
+  RD --> DOCS & GEM
+  Agents -- "write facts" --> KG
+  ORCH -- "reads memory each turn" --> KG
+  UI -. "connect (OAuth consent)" .-> GCAL & GMAIL & GDRIVE & GFIT
 ```
-Frontend (React/Vite)  ──►  FastAPI  ──►  handler (pipeline | agentic core)
-                                              │  reads/writes the Knowledge-Graph memory
-                                              └► agents/tools: facilities · coverage · schedule
-Google: Vertex Gemini · Maps · Calendar · Drive · Firestore     SQLite: users/profiles/memory
+
+### Request lifecycle (one turn)
+
+```mermaid
+sequenceDiagram
+  actor U as Caregiver
+  participant FE as Frontend (SSE)
+  participant R as Router (gate)
+  participant O as Orchestrator (Gemini loop)
+  participant T as Specialist agent/tool
+  participant M as KG memory
+  U->>FE: "check schemes for my mother"
+  FE->>R: /chat/stream + connected_connectors + attachments
+  R-->>FE: clinical? ambiguous? (else pass)
+  R->>O: message + MEMORY(mother) + tools
+  O->>O: Gemini picks a tool (function call)
+  O->>T: find_coverage(condition, location, scope)
+  T->>M: write facts (schemes explored)
+  T-->>O: result summary
+  O->>O: Gemini writes a short, warm reply
+  O-->>FE: thinking → step(s) → done (SSE chunks)
+  FE-->>U: agent trace + coverage card + next-step question
 ```
 
-- **Deterministic pipeline** (`app/orchestrator/*`): Segmenter → TaskState → Planner →
-  Executor(agents) → Writer.
-- **Agentic core** (`app/orchestrator/agent.py` + `skills/orchestrator.md`): an LLM
-  function-calling loop; guardrails (clinical refusal, DB-persisted confirmation gate, step
-  cap, arg validation) enforced in code, behavior in the skill file.
+**Why this architecture — and why only this:**
 
-## Repo layout
-
-```
-withcare-backend/     FastAPI, agents, tools, knowledge graph, eval suite
-withcare-frontend/    React + Vite chat UI
-.agents/              architecture & design docs
-```
+- **Reasoning vs. action are separated on purpose.** The LLM is powerful but non-deterministic; letting it *decide* is great, letting it *execute unchecked* is dangerous. So Gemini only emits **typed function calls**, and every consequential path is enforced in **code**, not prompt text.
+- **Guardrails live in control flow, not the prompt** — clinical refusal (pre-loop), a DB-persisted confirm-before-booking gate, a bounded tool loop, argument validation, and connector gating. A model can be jailbroken; a code gate cannot.
+- **Everything external is grounded.** Facilities (Maps + Firestore), coverage (Firestore + Google Search), documents (the user's own files), prices (grounded Search) — never model memory. This is what keeps a healthcare tool honest.
+- **Streaming (SSE) makes the work inspectable** — the UI shows each agent as it runs, so the user (and a judge) sees *proof of work*, not a black box.
+- **Why not a single mega-prompt or a hardcoded intent switch?** A mega-prompt can't enforce irreversible-action safety and hallucinates data; a hardcoded switch can't handle the messy, multi-step, multilingual reality of caregiver questions. The function-calling loop + typed tools is the smallest design that is both flexible *and* safe.
 
 ---
+
+# Subagent Architectures
+
+Each specialist does one thing well, returns typed `SourcedStep`s (so the frontend renders consistent cards), and writes durable facts to the knowledge graph. Below: each agent's user-flow, a screenshot slot, and the design rationale.
+
+## 0. Orchestrator — `WithCareAgent` (the root agent)
+
+The brain of the loop. Loads the active person's memory, exposes the toolbox to Gemini, runs a bounded function-calling loop, and enforces the hard guardrails.
+
+```mermaid
+flowchart TB
+  IN["User message + history + MEMORY + connectors + attachments"] --> PEND{"Pending action?"}
+  PEND -- "yes + 'yes'" --> COMMIT["Commit booking → Calendar"]
+  PEND -- "no / other" --> CLIN{"Clinical? (router)"}
+  CLIN -- "yes" --> REF["Refuse + offer to find a professional"]
+  CLIN -- "no" --> LOOP["Gemini function-calling loop (max 6 steps)"]
+  LOOP -- "function_call" --> TOOL["Run typed tool → guardrails → result"]
+  TOOL --> LOOP
+  LOOP -- "no more calls" --> EMIT["Emit steps + short reply (SSE)"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/orchestrator_trace.png`_ — the "N specialists consulted" trace pill expanded.
+
+**Why this:** a function-calling loop lets Gemini compose multiple tools for one request ("find a hospital *and* book it") from plain language, using the injected memory to avoid re-asking.
+**Why only this:** the loop is **bounded** (step cap), tools are **validated**, and irreversible/clinical paths are intercepted *outside* the model — so the flexibility of an agent never becomes an unsafe action.
+
+## 1. Intake Router — safety gate
+
+Runs **before** the loop. A keyword fast-path catches obvious clinical asks instantly; otherwise Gemini classifies `is_clinical` / `is_ambiguous`.
+
+```mermaid
+flowchart LR
+  M["Message + last turns"] --> KW{"Clinical keyword?"}
+  KW -- "yes" --> C["is_clinical = true → refuse"]
+  KW -- "no" --> LLM["Gemini structured classify"]
+  LLM --> D{"clinical? ambiguous?"}
+  D -- "clinical" --> C
+  D -- "ambiguous" --> Q["Ask one clarifying question"]
+  D -- "actionable" --> PASS["→ Orchestrator"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/router_refusal.png`_ — a clinical question being safely redirected.
+
+**Why this:** the cheapest, most reliable safety is to decide *before* spending tokens or touching tools. The fast-path is free and instant; the LLM handles nuance ("schemes for her diabetes" is navigation, not clinical).
+**Why only this:** asking the main model to self-police mid-conversation is unreliable and hard to audit — a dedicated, logged gate is deterministic and testable.
+
+## 2. Facility Agent — find the right hospital, nearby and real
+
+Curated India facilities (Firestore) + Gemini ranking + **live Maps** enrichment (real distance, rating, link), reconciled through one reverse-geocode so coordinates and city never disagree; sorted nearest-first.
+
+```mermaid
+flowchart TB
+  IN["condition/specialty + location/coords"] --> GEO["reverse-geocode coords → city (cached)"]
+  GEO --> FSq["Firestore query (city → state → all)"]
+  FSq --> RANK["Gemini ranks top 3 + why + next step"]
+  RANK --> MAP["Maps: nearby + distance + rating"]
+  MAP --> MERGE["Merge + dedupe + sort by distance"]
+  MERGE --> STEPS["SourcedSteps → facility cards"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/facility_card.png`_ — facility results with distance/rating and sort chips.
+
+**Why this:** Firestore gives *curated, scheme-aware* Indian hospitals; Maps gives *live* proximity, rating and a clickable pin; Gemini explains *why* each fits. Together they're both trustworthy and current.
+**Why only this:** a pure-LLM hospital list hallucinates addresses and distances. Grounding in Firestore + Maps yields results a caregiver can actually call and drive to.
+
+## 3. Coverage Agent — `scheme_agent` (government + private)
+
+Government schemes come from curated **Firestore**; private insurance comes **live from Google Search grounding**, parsed through a **self-correcting JSON loop** so a bad LLM format can never break the UI.
+
+```mermaid
+flowchart TB
+  IN["condition + location + scope + eligibility"] --> ELIG["Gemini extracts eligibility signals"]
+  ELIG --> GOV["Firestore: matching govt schemes"]
+  ELIG --> PRIV["Grounded Google Search: live private plans"]
+  PRIV --> SC{"Valid JSON?"}
+  SC -- "no" --> RETRY["Re-prompt Gemini with the error log"]
+  RETRY --> SC
+  SC -- "yes" --> MERGE["Merge → coverage cards + eligibility follow-up"]
+  GOV --> MERGE
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/coverage_card.png`_ — govt schemes + private insurance results.
+
+**Why this:** government schemes are stable and belong in a curated store; private plans change constantly and must be fetched **live**. The self-correcting loop turns fragile grounded output into reliable structured cards.
+**Why only this:** a static insurance list goes stale; ungrounded LLM output invents plans and URLs. Split sourcing + self-correction balances freshness with reliability.
+
+## 4. Reminder Agent — deterministic, per-person
+
+No LLM inside — the orchestrator already extracted the args. It resolves the recipient, creates a recurring **Calendar** event (RRULE + notify-N-min-before), best-effort **Gmail**, and records the reminder in memory. Date parsing never raises.
+
+```mermaid
+flowchart LR
+  IN["recipient + message + time + recurrence"] --> RES["Resolve person (name/relation)"]
+  RES --> CAL["Calendar event (RRULE + reminder override)"]
+  CAL --> MAIL["Gmail to that person (best-effort)"]
+  MAIL --> KGw["Write reminder → KG"]
+  KGw --> OUT["Honest confirmation of what actually happened"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/reminder.png`_ — a reminder in Tasks & Reminders (Calendar + Gmail chips).
+
+**Why this:** once the intent is structured, execution should be **deterministic** — robust date handling ("tomorrow", weekday names, ISO), per-person delivery, and a truthful report ("saved, but couldn't email — check the connection").
+**Why only this:** letting the LLM hand-format calendar payloads risks malformed events and silent failures; a deterministic executor with a never-raise date parser is safe and predictable.
+
+## 5. Scheduling Agent — `action_agent` (confirm-before-book)
+
+Booking is **irreversible**, so the orchestrator can only **stage** it (persisted in `pending_actions`); the user's explicit "yes" is the *only* path that commits. On commit: Calendar event, optional family-calendar sync (with consent), an optional Drive care-plan doc, and a memory write.
+
+```mermaid
+flowchart TB
+  ASK["User: book X at hospital, date/time"] --> STAGE["Stage in pending_actions (DB)"]
+  STAGE --> CONFIRM{"User confirms 'yes'?"}
+  CONFIRM -- "no" --> CLR["Clear — nothing booked"]
+  CONFIRM -- "yes" --> EVT["Create Calendar event"]
+  EVT --> SYNC["Sync to family calendar (if consent)"]
+  SYNC --> DOC["Save care plan → Drive (optional)"]
+  DOC --> KGw["Write appointment → KG"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/schedule_confirm.png`_ — the "shall I book? yes/no" confirmation + booked card.
+
+**Why this:** a hard, DB-persisted **stage → confirm → commit** flow means an irreversible action can only ever happen on an explicit human "yes" — the model cannot self-authorize.
+**Why only this:** auto-booking on an LLM's word is unacceptable for real calendars and family members; staging is the only design that makes the human the final authority.
+
+## 6. Workout Agent & 7. Diet Agent — tailored, adaptive plans
+
+Both read the person's KG profile (age, gender, weight, height, conditions) + a required **goal**, generate a structured weekly/7-day plan with Gemini, and store **one plan per profile** (a new plan supersedes the old). The **diet plan coordinates with the current workout plan** — more fuel on training days.
+
+```mermaid
+flowchart TB
+  IN["person + goal (asked if missing)"] --> PROF["Load KG profile + conditions"]
+  PROF --> WK["plan_workout → weekly plan"]
+  WK --> KGw1["Store workout_plan (supersede)"]
+  KGw1 --> DT["plan_diet reads current workout"]
+  DT --> GEN["Gemini: 7-day diet fuelling the workout"]
+  GEN --> KGw2["Store diet_plan (supersede)"]
+  KGw2 --> CARD["Rendered as plan cards (chat + Plans view)"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/plan_cards.png`_ — a diet/workout plan as day-by-day accordion cards.
+
+**Why this:** plans are only useful if they fit *this* person and adapt as health changes; storing structured plans in the KG lets both chat and the Plans view render the same source of truth.
+**Why only this:** generic, re-asked plans ignore the profile; one-plan-per-type keeps history clean and supports the "plans adapt as you improve" story. Coordinating diet with the stored workout is what makes them a program, not two disconnected lists.
+
+## 8. Product Agent — price-compare across stores
+
+The user names a product (a device, supplement, or a medicine **they named**); grounded Google Search finds listings across Amazon / Flipkart / PharmEasy / Apollo / 1mg / Netmeds, normalized and **sorted cheapest → costliest**, with a "Cheapest" tag, real links, and a self-correcting JSON parse.
+
+```mermaid
+flowchart LR
+  Q["Product query"] --> SR["Grounded Search across stores"]
+  SR --> JS{"Valid JSON?"}
+  JS -- "no" --> RE["Re-prompt with error"] --> JS
+  JS -- "yes" --> NORM["Normalize price → sort cheap→costly"]
+  NORM --> CARDS["Google-colored product cards (3/row)"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/product_cards.png`_ — product price-compare cards.
+
+**Why this:** grounded Search gives **real store links and indicative prices** with no scraper cost and no dependency on a fragile/paid API — and it's structured to swap in real scraping later.
+**Why only this:** live per-store scraping is costly and brittle; the agent only compares what the user asked for and **never suggests or doses a medicine** — a hard safety line.
+
+## 9. Reader Agent — RAG over the user's own documents
+
+Upload → Gemini multimodal **OCR** (reads scans & photos, not just text PDFs) → chunk → **embed** (`text-embedding-004`) → store vectors. A question embeds → **cosine top-k** → Gemini answers **only from the excerpts**, citing the document. Files attached in chat inject their text directly so "read this image" works.
+
+```mermaid
+flowchart TB
+  UP["Upload / attach (PDF, image)"] --> OCR["Gemini OCR → text"]
+  OCR --> CH["Chunk + embed → vectors (SQLite)"]
+  Q["Question"] --> EMB["Embed query"]
+  EMB --> TOPK["Cosine top-k over user's chunks"]
+  CH --> TOPK
+  TOPK --> ANS["Gemini answers ONLY from excerpts + cites label"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/reader.png`_ — asking a policy/report and getting a cited answer.
+
+**Why this:** grounded, cited document Q&A is the safe way to answer "what's my room-rent limit?" — the model can't invent, only quote. Multimodal OCR means a phone photo of a prescription works.
+**Why only this:** stuffing whole documents into every prompt is expensive and lossy; chunk-embed-retrieve is the standard scalable RAG pattern, and answer-only-from-excerpts is what prevents hallucinated medical figures.
+
+## ⋆ Memory — the per-profile Knowledge Graph (shared substrate)
+
+Not an agent, but what makes them all coherent. Every agent writes typed facts (`condition`, `medication`, `appointment`, `scheme`, `insurance`, `workout_plan`, `diet_plan`, `reminder`, `health_metric`…) as nodes linked to the person; a compact, token-cheap slice is injected into every LLM turn.
+
+```mermaid
+flowchart LR
+  AG["Any agent"] -- "write_fact(typed node)" --> KG[("kg_nodes / kg_edges")]
+  KG -- "get_profile_memory (compact block)" --> ORCH["Injected into every turn"]
+  KG -- "get_profile_graph" --> VIEW["Profile dashboard + Plans/Tasks views"]
+```
+
+> 📸 **Screenshot:** _add `docs/screenshots/memory.png`_ — a care profile dashboard / Memory manager.
+
+**Why this:** structured, typed memory is compact enough to inject every turn, so WithCare **never re-asks** what it knows and stays useful across sessions and across the whole family.
+**Why only this:** replaying raw chat history is expensive and noisy; a typed graph is queryable, renders the Profile/Plans/Tasks views, and can migrate to a real graph DB later without changing callers. See [`withcare-backend/MEMORY.md`](withcare-backend/MEMORY.md) for the schema.
+
+---
+
+## Tech Stack
+
+| Layer | Choice |
+|------|--------|
+| Frontend | React + Vite, Tailwind, **Material 3** design system, SSE streaming |
+| Backend | **FastAPI** + `sse-starlette` (Server-Sent Events) |
+| Reasoning | **Gemini 2.5 Flash** via `google-genai` — function calling, grounded Google Search, `text-embedding-004` |
+| Agent core | Custom function-calling orchestrator + modular **skills** (`skills/*.md`) |
+| Google services | Calendar, Gmail, Drive, Maps, Fit (per-user **OAuth consent**) |
+| Data | SQLite (users, profiles, conversations, **knowledge graph**, documents+vectors, pending actions); **Firestore** (schemes, facilities) |
+| Safety | Pre-loop clinical gate · DB-persisted confirm-before-book · step cap · arg validation · connector gating |
+
+## Repository Layout
+
+```
+withcare-backend/     FastAPI · orchestrator + agents · tools · knowledge graph · RAG reader · skills
+withcare-frontend/    React + Vite chat UI · Material 3 · views (Chat/Reader/Health/Tasks/Plans/Connectors)
+```
 
 ## Setup
 
-### Prerequisites
-- Python 3.11+, Node 18+
-- A Google Cloud project with Vertex AI enabled; `gcloud auth application-default login`
-- (Optional) Google Maps API key, a Web OAuth Client ID, and Calendar/Drive OAuth token
+**Prerequisites:** Python 3.11+, Node 18+, a Google Cloud project with Vertex AI enabled (`gcloud auth application-default login`); optional Maps API key, Web OAuth Client ID, and Calendar/Drive OAuth token.
 
-### Backend
+**Backend**
 ```bash
 cd withcare-backend
-python -m venv .venv && . .venv/Scripts/activate   # or source .venv/bin/activate
+python -m venv .venv && . .venv/Scripts/activate      # or: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # fill in GCP_PROJECT_ID, GOOGLE_MAPS_API_KEY, GOOGLE_OAUTH_CLIENT_ID
-python scripts/setup_calendar_auth.py   # optional: generates token.json for Calendar/Drive
+cp .env.example .env          # GCP_PROJECT_ID, GOOGLE_MAPS_API_KEY, GOOGLE_OAUTH_CLIENT_ID, ...
+python scripts/setup_auth.py  # optional: generates token.json for Calendar/Drive/Gmail
 uvicorn app.main:app --reload --port 8001
 ```
 
-### Frontend
+**Frontend**
 ```bash
 cd withcare-frontend
 npm install
-cp .env.example .env        # VITE_API_URL=http://localhost:8001
-npm run dev                 # http://localhost:5173
+cp .env.example .env          # VITE_API_URL=http://localhost:8001
+npm run dev                    # http://localhost:5173
 ```
 
-### Choosing the brain
-```bash
-# deterministic pipeline (default)
-USE_AGENT=0 uvicorn app.main:app --port 8001
-# agentic core
-USE_AGENT=1 uvicorn app.main:app --port 8001
-```
+## Safety, Trust & Scope
 
-### Running the eval suite
-```bash
-cd withcare-backend
-python -m tests.eval.run_eval            # all cases
-python -m tests.eval.run_eval --only <case_id>
-```
-
----
+WithCare is a **hackathon prototype**, not a medical device. It is designed to *navigate* care, not replace clinicians. It refuses diagnosis/treatment/dosing (for people and pets), grounds external facts in real data, and requires explicit confirmation before any irreversible action. Real deployment would still require clinical validation, privacy/legal review, durable human-in-the-loop state, and formal medical safety review.
 
 ## Security
 
-Secrets are **git-ignored** and must never be committed: `.env`, `token.json`,
-`client_secret*.json`, `service-account*.json`, and the SQLite `*.db`. Use the `.env.example`
-files as templates.
+Secrets are **git-ignored** and never committed: `.env`, `token.json`, `client_secret*.json`, `service-account*.json`, and the SQLite `*.db`. Use the `.env.example` templates.
 
-## Status
+---
 
-Hackathon project (Google Gen AI). The deterministic pipeline is the current default; the
-agentic core is being migrated in behind `USE_AGENT`, gated by the eval suite.
+<p align="center"><b>WithCare</b> · Built for the Google Gen AI Hackathon</p>
