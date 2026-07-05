@@ -29,5 +29,28 @@ and health conditions. This is general fitness guidance, not physiotherapy or tr
 - End: general guidance, not medical advice; consult a doctor before starting if they have a
   serious condition.
 
-## Format
-One sentence naming who it's for and the focus, then the Day 1–7 structure.
+## Format — FOLLOW THIS EXACTLY (the app renders it into day cards)
+Write PLAIN TEXT. Do **NOT** use markdown headings (`#`, `##`, `###`). Do **NOT** use weekday
+names (Monday, Tuesday…). Do **NOT** add a separate "schedule"/summary list.
+
+First line: ONE sentence naming who it's for and the goal.
+Then output all seven days, each block EXACTLY in this shape:
+
+```
+Day 1: <short focus, e.g. Upper Body Strength>
+**Warm-up:** <one line>
+**Workout:** <one-line overview>
+- <exercise — sets × reps>
+- <exercise — sets × reps>
+**Cool-down:** <one line>
+Rationale: <one line tied to their goal/condition>
+```
+
+Repeat for Day 2, Day 3 … through Day 7 (write `Day N: Rest` for rest days).
+End with ONE footer line that starts with `Note:` (the general / consult-a-doctor guidance).
+
+Critical rules:
+- Every day MUST begin with `Day N:` where N is 1–7. Never `Monday`, never `##`.
+- Section labels MUST be wrapped in double asterisks: `**Warm-up:**`, `**Workout:**`, `**Cool-down:**`.
+- List exercises with `- `.
+- The final guidance line MUST start with `Note:`.

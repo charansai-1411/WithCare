@@ -201,7 +201,10 @@ export default function PlanCards({ text, variant = 'tabs' }) {
     // Not a real plan (e.g. an old truncated one) — show the text so nothing is lost.
     return (
       <div className="text-[13.5px] text-on-surface-variant leading-relaxed whitespace-pre-line">
-        {(text || '').replace(/\*\*/g, '').replace(/\n-{2,}\n/g, '\n')}
+        {(text || '')
+          .replace(/\*\*/g, '')
+          .replace(/^#{1,6}\s*/gm, '')   // strip markdown heading markers (##, ###) if the model used them
+          .replace(/\n-{2,}\n/g, '\n')}
       </div>
     );
   }
