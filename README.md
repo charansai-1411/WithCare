@@ -11,7 +11,6 @@
 
 > ⚠️ **WithCare provides navigation assistance only. It is not medical advice and never diagnoses, doses, or interprets results.**
 
-![WithCare — landing chat with the multi-agent trace and a care card](docs/screenshots/hero.png)
 
 ---
 
