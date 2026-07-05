@@ -1,10 +1,29 @@
+# Python
 __pycache__/
 *.pyc
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Secrets / credentials — NEVER bake into the image
 .env
 .env.*
+token.json
+client_secret*.json
+service-account*.json
+*credentials*.json
+*.pem
+*.key
+
+# Local database (lives on the GCS volume in Cloud Run)
+*.db
+*.sqlite
+*.sqlite3
+
+# VCS / tooling / build meta
 .git
 .gitignore
-.pytest_cache/
 tests/
 Dockerfile
 cloudbuild.yaml

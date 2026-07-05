@@ -1,7 +1,15 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "withcare.db")
+# In Cloud Run the DB lives on a mounted GCS volume (set WITHCARE_DB_PATH, e.g.
+# /mnt/db/withcare.db). Locally it defaults to a file next to the backend.
+DB_PATH = os.environ.get(
+    "WITHCARE_DB_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "..", "withcare.db"),
+)
+
+# Ensure the parent directory exists (the GCS mount point, or local dir).
+os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
 
 
 def init_db():
