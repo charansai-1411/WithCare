@@ -32,9 +32,14 @@ class ActionAgent(BaseAgent):
         tokens         = context.get("connector_tokens", {}) or {}
         cal_token      = tokens.get("calendar")
         drive_token    = tokens.get("drive")
-        # Recurrence — lets a scheduled activity (e.g. gym) repeat daily/weekly.
+        # Recurrence — lets a scheduled activity (e.g. gym) repeat daily/weekly,
+        # optionally bounded by an end date (repeat_until, YYYY-MM-DD, inclusive).
         recurrence     = (context.get("recurrence") or "none").lower()
+        repeat_until   = (context.get("repeat_until") or "").strip()
         rrule          = _RRULE.get(recurrence)
+        if rrule and len(repeat_until.replace("-", "")) == 8:
+            # UNTIL is UTC end-of-day so the last day's occurrence (any IST time) is included.
+            rrule += f";UNTIL={repeat_until.replace('-', '')}T235959Z"
 
         # Build event title: "Eye Check-up — LV Prasad Eye Institute"
         summary = procedure
@@ -66,6 +71,8 @@ class ActionAgent(BaseAgent):
             time_str = f"{s_dt.strftime('%d %b %Y, %I:%M %p')} – {e_dt.strftime('%I:%M %p')} IST"
             if recurrence in ("daily", "weekly", "monthly"):
                 time_str += f", repeating {recurrence}"
+                if repeat_until:
+                    time_str += f" until {repeat_until}"
         except Exception:
             time_str = start_dt[:10]
 

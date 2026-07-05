@@ -111,6 +111,7 @@ TOOL_DECLS = [
                 "time_end": {"type": "string", "description": "HH:MM 24h"},
                 "hospital": {"type": "string", "description": "Optional — clinic/hospital for a health visit; leave empty for a personal activity."},
                 "recurrence": {"type": "string", "enum": ["none", "daily", "weekly"], "description": "Repeat the event — 'daily' for e.g. a gym block every day, else 'none'."},
+                "repeat_until": {"type": "string", "description": "YYYY-MM-DD — the LAST date a recurring event should repeat (inclusive). For 'for the next one week' set it to 6 days after the start date; omit for an open-ended repeat. Uses TODAY to compute."},
                 "for_member": {"type": "string"},
             },
             "required": ["procedure", "date"],
@@ -719,7 +720,8 @@ class WithCareAgent:
             else:
                 summary = f"Schedule {args['procedure']} on {when}".strip()
             if rec in ("daily", "weekly"):
-                summary += f" ({rec})"
+                until = f" until {args['repeat_until']}" if args.get("repeat_until") else ""
+                summary += f" ({rec}{until})"
             self._stage_pending(base_ctx["session_id"], "schedule_appointment", args, summary, base_ctx)
             return {"status": "confirmation_required", "summary": summary,
                     "note": "Ask the user to confirm with a clear yes/no. Do NOT say it's added yet."}
@@ -751,6 +753,7 @@ class WithCareAgent:
                "extracted_hospital": args.get("hospital", ""),
                "extracted_start_datetime": start_iso, "extracted_end_datetime": end_iso,
                "recurrence": (args.get("recurrence") or "none"),
+               "repeat_until": args.get("repeat_until", ""),
                "for_member": args.get("for_member") or base_ctx.get("for_member", "self"),
                "care_plan_steps": [], "user_message": args.get("procedure", ""),
                "care_plan_context": {"intent_summary": args.get("procedure", ""), "ordered_steps": [],
