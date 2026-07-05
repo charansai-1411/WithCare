@@ -3,11 +3,15 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Hard fast-path — only phrases that are UNAMBIGUOUSLY asking us to make a medical
+# judgement. Deliberately excludes things like "medicine for" / "what medication",
+# which also appear in benign pharmacy/product/document-reading requests ("cheaper
+# medicine for diabetes", "what medications are in this list") — those go to the LLM
+# router, which weighs context.
 CLINICAL_KEYWORDS = [
     "diagnose", "diagnosis", "what disease", "do i have", "is it cancer",
-    "treatment for", "cure for", "medicine for", "what medication", "dosage",
-    "should i take", "side effects of", "symptoms of", "test results mean",
-    "what is wrong with", "prognosis", "how long will i live",
+    "cure for", "what dosage", "how much should i take",
+    "test results mean", "what is wrong with", "prognosis", "how long will i live",
 ]
 
 INTENT_SCHEMA = {
@@ -47,8 +51,17 @@ Read the full conversation and determine two things:
      "create a diet plan for my dog", "make a weekly workout plan for my father", "meal plan for
      her diabetes", "set a reminder to take medicine at 1pm". Diet/fitness/reminders — for people
      OR pets — are lifestyle guidance, not medical treatment. Never mark these clinical.
+   - NO — READING or LISTING what is written in an uploaded document, prescription, report or
+     image is NOT clinical; it's document reading. "what medicines are in this list", "list the
+     medicines in this prescription", "what does my report say", "summarize this", "what does my
+     policy cover" → all NOT clinical. Only medically INTERPRETING those results or advising a
+     treatment/dose based on them is clinical.
+   - NO — shopping for a health PRODUCT or device is NOT clinical, even with "best" or "cheapest":
+     "best BP monitor", "a good glucometer", "sugar monitor", "cheapest thermometer", "compare
+     prices for a nebulizer". Helping someone find/compare products to buy is shopping, not a
+     medical endorsement. Never mark these clinical.
    When in doubt between "asking us to judge a symptom or prescribe a medicine/treatment" and
-   "navigation or wellness help", only the former is clinical.
+   "navigation, shopping, document-reading, or wellness help", only the former is clinical.
 
 2. is_ambiguous: Is there genuinely zero health context to act on?
    - YES: "help me" / "book something" with absolutely no other details
