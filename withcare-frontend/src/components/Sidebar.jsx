@@ -49,10 +49,13 @@ export default function Sidebar({
   return (
     <div className="h-full w-full bg-surface flex flex-col p-4 font-body-md text-on-surface">
       {/* Logo */}
-      <div className="mb-5 px-1 m3-enter">
-        <div className="rounded-2xl bg-white p-2.5 border border-outline-variant/60 elev-1">
-          <img src="/withcare-logo.png" alt="WithCare — Healthcare, with care." className="w-full max-w-[176px] mx-auto" draggable={false} />
+      <div className="mb-5 px-2 flex items-center gap-2.5 m3-enter">
+        <div className="w-9 h-9 rounded-full bg-white border border-outline-variant/60 elev-1 overflow-hidden shrink-0 flex items-center justify-center">
+          <img src="/withcare-logo.png" alt="WithCare" className="w-full h-full object-cover" style={{ transformOrigin: '51% 33%', transform: 'scale(1.9)' }} draggable={false} />
         </div>
+        <span className="text-[20px] font-bold tracking-tight leading-none select-none">
+          <span className="text-on-surface">with</span><span className="text-primary">care</span>
+        </span>
       </div>
 
       {/* New conversation */}

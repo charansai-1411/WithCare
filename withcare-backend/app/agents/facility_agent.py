@@ -1,7 +1,43 @@
 from app.agents.base_agent import BaseAgent
 from app.models.response_models import AgentResult, SourcedStep
 from app.tools.firestore_tool import query_facilities
-from app.tools.maps_tool import find_nearby_hospitals, get_distance, reverse_geocode, _is_coordinate_pair
+from app.tools.maps_tool import find_nearby_hospitals, find_nearby_places, get_distance, reverse_geocode, _is_coordinate_pair
+
+
+# Non-medical place categories the Facility Agent can also find. Each maps to a
+# Google Places `type` (or "" to rely on keyword) plus a search keyword + label.
+_PLACE_CATEGORIES = {
+    "gym":        {"type": "gym",     "keyword": "gym fitness center",     "label": "gym"},
+    "yoga":       {"type": "gym",     "keyword": "yoga studio",            "label": "yoga studio"},
+    "pool":       {"type": "",        "keyword": "swimming pool",          "label": "swimming pool"},
+    "playground": {"type": "park",    "keyword": "playground",             "label": "playground"},
+    "park":       {"type": "park",    "keyword": "park garden",            "label": "park"},
+    "stadium":    {"type": "stadium", "keyword": "stadium",                "label": "stadium"},
+    "sports":     {"type": "",        "keyword": "sports complex ground turf court", "label": "sports facility"},
+}
+
+# Ordered keyword checks — first match wins (specific before general).
+_CATEGORY_CHECKS = [
+    (("gym", "fitness", "weight train", "workout place", "crossfit"), "gym"),
+    (("yoga", "pilates"), "yoga"),
+    (("swimming", " swim", "swim ", "pool"), "pool"),
+    (("playground", "play ground", "play area"), "playground"),
+    (("park", "garden", "jog", "jogging", "run near", "running track", "walk near",
+      "walking track", "morning walk", "evening walk", "cycling", "cycle track", "trail"), "park"),
+    (("stadium",), "stadium"),
+    (("sports", "sport ", "turf", "badminton", "tennis", "basketball", "football ground",
+      "cricket ground", "cricket net", "sports complex", "sports club"), "sports"),
+]
+
+
+def _detect_place_category(text: str) -> dict | None:
+    """Return a _PLACE_CATEGORIES entry if the text is asking for a non-medical
+    place (gym, park, pool, etc.), else None (treat as a hospital/clinic query)."""
+    t = (text or "").lower()
+    for keys, cat in _CATEGORY_CHECKS:
+        if any(k in t for k in keys):
+            return _PLACE_CATEGORIES[cat]
+    return None
 
 
 FACILITY_CONTEXT_SCHEMA = {
@@ -62,6 +98,13 @@ class FacilityAgent(BaseAgent):
 
         # A coordinate string is never a usable city name for Firestore.
         text_location = "" if _is_coordinate_pair(location) else location
+
+        # Non-medical places (gym, park, pool, playground, sports) take a Places-only
+        # path — Firestore holds hospitals only, so ranking them here would be wrong.
+        category = _detect_place_category(user_message) or _detect_place_category(condition) or _detect_place_category(specialty)
+        if category:
+            self.logger.info(f"FacilityAgent: place category '{category['label']}'")
+            return await self._find_places(category, coordinates, text_location, derived_city)
 
         # Only call Gemini extraction if we have no typed params
         if not condition and not specialty:
@@ -196,6 +239,46 @@ class FacilityAgent(BaseAgent):
 
         self.logger.info(f"FacilityAgent produced {len(steps)} steps")
         return AgentResult(agent_name=self.name, steps=steps, raw_data=facilities)
+
+    async def _find_places(self, category: dict, coordinates, text_location: str, derived_city: str) -> AgentResult:
+        """Places-only search for gyms, parks, pools, playgrounds, sports facilities."""
+        if coordinates and coordinates.get("lat") and coordinates.get("lng"):
+            loc_str = f"{coordinates['lat']},{coordinates['lng']}"
+        else:
+            loc_str = text_location or derived_city
+
+        if not loc_str:
+            self.logger.warning("No usable location for place search")
+            return AgentResult(agent_name=self.name, steps=[], raw_data=[])
+
+        places = await find_nearby_places(
+            loc_str, keyword=category["keyword"], place_type=category["type"], max_results=6,
+        )
+
+        steps = []
+        for i, p in enumerate(places, 1):
+            dist = p.get("distance_km")
+            detail = f"Address: {p['address']}."
+            if p.get("rating"):
+                detail += f" Rating: {p['rating']}/5 ({p.get('user_ratings_total', 0)} reviews)."
+            if dist is not None:
+                detail += f" | {dist} km away"
+            steps.append(SourcedStep(
+                step_number=i,
+                action=f"Visit {p['name']}",
+                detail=detail,
+                source_url=p["maps_url"],
+                source_label=f"{p['name']} on Google Maps",
+                agent=self.name,
+                distance_km=dist,
+            ))
+
+        steps.sort(key=lambda s: (s.distance_km is None, s.distance_km or 0))
+        for i, s in enumerate(steps, 1):
+            s.step_number = i
+
+        self.logger.info(f"FacilityAgent produced {len(steps)} {category['label']} results")
+        return AgentResult(agent_name=self.name, steps=steps, raw_data=places)
 
     _city_cache: dict[str, str] = {}
 

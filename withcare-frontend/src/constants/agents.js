@@ -1,10 +1,15 @@
 export const AGENTS = {
   orchestrator: { name: 'Orchestrator',     role: 'Coordinator',          initials: 'OR' },
-  scheme:       { name: 'Scheme Agent',     role: 'Govt health schemes',  initials: 'SC' },
+  scheme:       { name: 'Coverage Agent',   role: 'Schemes & insurance',  initials: 'CV' },
   insurance:    { name: 'Insurance Agent',  role: 'Insurance documents',  initials: 'IN' },
-  facility:     { name: 'Facility Agent',   role: 'Hospitals nearby',     initials: 'FA' },
+  facility:     { name: 'Facility Agent',   role: 'Places nearby',        initials: 'FA' },
   medicine:     { name: 'Medicine Agent',   role: 'Affordable medicines', initials: 'ME' },
-  action:       { name: 'Action Agent',     role: 'Calendar scheduling',  initials: 'AC' },
+  action:       { name: 'Scheduling Agent', role: 'Calendar scheduling',  initials: 'SA' },
+  reminder:     { name: 'Reminder Agent',   role: 'Reminders & tasks',    initials: 'RM' },
+  workout:      { name: 'Workout Agent',    role: 'Fitness plans',        initials: 'WO' },
+  diet:         { name: 'Diet Agent',       role: 'Nutrition plans',      initials: 'DT' },
+  product:      { name: 'Product Agent',    role: 'Price comparison',     initials: 'PR' },
+  reader:       { name: 'Reader',           role: 'Your documents',       initials: 'RD' },
 };
 
 export const CONNECTORS = [

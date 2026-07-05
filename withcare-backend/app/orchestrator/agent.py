@@ -63,11 +63,11 @@ def classify_yes_no(message: str) -> str:
 TOOL_DECLS = [
     {
         "name": "find_facilities",
-        "description": "Find hospitals/clinics for a health need near a location. Read-only.",
+        "description": "Find places near a location for health, fitness or wellbeing — hospitals & clinics, and also gyms, yoga studios, parks, swimming pools, playgrounds and sports facilities. Read-only.",
         "parameters": {
             "type": "object",
             "properties": {
-                "condition": {"type": "string", "description": "Health need or specialty, e.g. 'eye care', 'cardiology'"},
+                "condition": {"type": "string", "description": "What to find, e.g. 'eye care', 'cardiology', 'gym', 'park', 'swimming pool', 'sports ground'"},
                 "location": {"type": "string", "description": "City/area; use the user's known location for 'near me'"},
                 "specialty": {"type": "string", "description": "Medical specialty if known"},
             },

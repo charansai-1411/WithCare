@@ -81,24 +81,27 @@ async def reverse_geocode(lat: float, lng: float) -> str | None:
     return None
 
 
-async def find_nearby_hospitals(
+async def find_nearby_places(
     location: str,
-    specialty: str = "",
+    keyword: str = "",
+    place_type: str = "",
     radius_meters: int = 15000,
-    max_results: int = 5,
+    max_results: int = 6,
 ) -> list[dict]:
     """
-    Find hospitals near a location using Places Nearby Search.
-    Returns list of dicts with name, address, rating, place_id, maps_url, distance_km,
-    already sorted nearest-first.
+    Find any kind of place near a location using Places Nearby Search — hospitals,
+    gyms, parks, swimming pools, playgrounds, sports facilities, etc.
+    `place_type` is a Google Places type (e.g. 'hospital', 'gym', 'park', 'stadium');
+    pass "" to rely on `keyword` alone. Returns dicts with name, address, rating,
+    place_id, maps_url, distance_km — already sorted nearest-first.
     """
     if not settings.google_maps_api_key:
         logger.warning("GOOGLE_MAPS_API_KEY not set — skipping nearby search")
         return []
 
     if _is_coordinate_pair(location):
-        # FIX: use coordinates directly. Previously this went through geocode(), which
-        # appended ', India' and mangled 'lat,lng' into a garbage forward-geocode.
+        # Use coordinates directly. Going through geocode() would append ', India'
+        # and mangle 'lat,lng' into a garbage forward-geocode.
         origin_lat, origin_lng = (float(x.strip()) for x in location.split(","))
     else:
         coords = await geocode(location)
@@ -106,16 +109,18 @@ async def find_nearby_hospitals(
             return []
         origin_lat, origin_lng = coords["lat"], coords["lng"]
 
-    keyword = f"{specialty} hospital" if specialty else "hospital"
+    params = {
+        "location": f"{origin_lat},{origin_lng}",
+        "radius": radius_meters,
+        "key": settings.google_maps_api_key,
+    }
+    if keyword:
+        params["keyword"] = keyword
+    if place_type:
+        params["type"] = place_type
 
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(PLACES_NEARBY_URL, params={
-            "location": f"{origin_lat},{origin_lng}",
-            "radius": radius_meters,
-            "keyword": keyword,
-            "type": "hospital",
-            "key": settings.google_maps_api_key,
-        })
+        resp = await client.get(PLACES_NEARBY_URL, params=params)
         data = resp.json()
 
     if data.get("status") not in ("OK", "ZERO_RESULTS"):
@@ -136,14 +141,28 @@ async def find_nearby_hospitals(
             "maps_url": f"https://www.google.com/maps/place/?q=place_id:{place_id}",
             "lat": plat,
             "lng": plng,
-            # FIX: real distance, computed locally — no missing dict key, no extra API call
+            # Real distance, computed locally — no missing dict key, no extra API call
             "distance_km": round(_haversine_km(origin_lat, origin_lng, plat, plng), 1),
             "open_now": place.get("opening_hours", {}).get("open_now"),
         })
 
     results.sort(key=lambda r: r["distance_km"])
-    logger.info(f"find_nearby_hospitals({location!r}, {specialty!r}) -> {len(results)} results")
+    logger.info(f"find_nearby_places({location!r}, keyword={keyword!r}, type={place_type!r}) -> {len(results)} results")
     return results
+
+
+async def find_nearby_hospitals(
+    location: str,
+    specialty: str = "",
+    radius_meters: int = 15000,
+    max_results: int = 5,
+) -> list[dict]:
+    """Find hospitals near a location. Thin wrapper over find_nearby_places."""
+    keyword = f"{specialty} hospital" if specialty else "hospital"
+    return await find_nearby_places(
+        location, keyword=keyword, place_type="hospital",
+        radius_meters=radius_meters, max_results=max_results,
+    )
 
 
 async def get_distance(origin: str, destination: str) -> dict | None:

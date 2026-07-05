@@ -7,6 +7,11 @@ const AGENT_KEY = {
   scheme_agent:  'scheme',
   facility_agent:'facility',
   action_agent:  'action',
+  reminder_agent:'reminder',
+  workout_agent: 'workout',
+  diet_agent:    'diet',
+  product_agent: 'product',
+  reader:        'reader',
 };
 
 // Convert backend ordered_steps → UI plan shape

@@ -8,6 +8,12 @@ logger = get_logger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
+# All appointment times in WithCare are India Standard Time. Events are created
+# with an explicit dateTime + this zone, so the stored instant is always correct
+# IST (e.g. "10 AM" = 10:00 IST). If a user's Google Calendar *displays* another
+# zone, that's their account's display setting, not a booking error.
+_EVENT_TZ = "Asia/Kolkata"
+
 
 def get_calendar_service():
     """
@@ -67,8 +73,8 @@ async def create_calendar_event(
         event_body: dict = {
             "summary": summary,
             "description": description,
-            "start": {"dateTime": start_datetime, "timeZone": "Asia/Kolkata"},
-            "end": {"dateTime": end_datetime, "timeZone": "Asia/Kolkata"},
+            "start": {"dateTime": start_datetime, "timeZone": _EVENT_TZ},
+            "end": {"dateTime": end_datetime, "timeZone": _EVENT_TZ},
         }
 
         if location:
@@ -128,9 +134,9 @@ async def update_calendar_event(
         if summary is not None:
             patch["summary"] = summary
         if start_datetime:
-            patch["start"] = {"dateTime": start_datetime, "timeZone": "Asia/Kolkata"}
+            patch["start"] = {"dateTime": start_datetime, "timeZone": _EVENT_TZ}
         if end_datetime:
-            patch["end"] = {"dateTime": end_datetime, "timeZone": "Asia/Kolkata"}
+            patch["end"] = {"dateTime": end_datetime, "timeZone": _EVENT_TZ}
         if recurrence is not None:
             patch["recurrence"] = [recurrence] if recurrence else []
         if reminder_minutes:
