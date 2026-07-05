@@ -93,17 +93,24 @@ TOOL_DECLS = [
     },
     {
         "name": "schedule_appointment",
-        "description": ("Propose booking a health appointment on the calendar. Does NOT book — it "
-                        "stages the booking; the user must confirm afterward. If no hospital is known, "
-                        "call find_facilities first and pass the top hospital."),
+        "description": ("Propose putting a timed EVENT on the user's calendar — either a health "
+                        "appointment OR any activity they want to block time for (gym, a walk, study, "
+                        "a meeting). This is the tool for 'schedule …', 'block …', 'put … on my "
+                        "calendar'. It does NOT add it yet — it stages the event and the user must "
+                        "confirm afterward. Use time_start AND time_end for the block, and recurrence "
+                        "for repeating events (e.g. gym every day). For a health visit with no known "
+                        "hospital, call find_facilities first and pass the top one. Prefer this over "
+                        "set_reminder whenever the user wants the activity itself blocked on the "
+                        "calendar (set_reminder is only for a notification nudge)."),
         "parameters": {
             "type": "object",
             "properties": {
-                "procedure": {"type": "string"},
-                "date": {"type": "string", "description": "YYYY-MM-DD"},
+                "procedure": {"type": "string", "description": "What to schedule — a procedure ('eye check-up') or an activity ('Gym', 'Morning walk')."},
+                "date": {"type": "string", "description": "YYYY-MM-DD (start date; first day for a recurring event)"},
                 "time_start": {"type": "string", "description": "HH:MM 24h"},
                 "time_end": {"type": "string", "description": "HH:MM 24h"},
-                "hospital": {"type": "string"},
+                "hospital": {"type": "string", "description": "Optional — clinic/hospital for a health visit; leave empty for a personal activity."},
+                "recurrence": {"type": "string", "enum": ["none", "daily", "weekly"], "description": "Repeat the event — 'daily' for e.g. a gym block every day, else 'none'."},
                 "for_member": {"type": "string"},
             },
             "required": ["procedure", "date"],
@@ -703,12 +710,19 @@ class WithCareAgent:
             if missing:
                 return {"status": "need_more", "missing": missing,
                         "note": f"Ask the user for: {', '.join(missing)}."}
-            when = f"{args['date']} {args.get('time_start','')}".strip()
-            hosp = args.get("hospital") or "a suitable nearby clinic"
-            summary = f"Book {args['procedure']} at {hosp} on {when}".strip()
+            ts, te = args.get("time_start", ""), args.get("time_end", "")
+            rec = (args.get("recurrence") or "none").lower()
+            when = args["date"] + (f" {ts}" if ts else "") + (f"–{te}" if te else "")
+            hosp = args.get("hospital", "")
+            if hosp and hosp != "find_nearest":
+                summary = f"Book {args['procedure']} at {hosp} on {when}".strip()
+            else:
+                summary = f"Schedule {args['procedure']} on {when}".strip()
+            if rec in ("daily", "weekly"):
+                summary += f" ({rec})"
             self._stage_pending(base_ctx["session_id"], "schedule_appointment", args, summary, base_ctx)
             return {"status": "confirmation_required", "summary": summary,
-                    "note": "Ask the user to confirm with a clear yes/no. Do NOT say it's booked yet."}
+                    "note": "Ask the user to confirm with a clear yes/no. Do NOT say it's added yet."}
         return {"error": f"unknown tool {name}"}
 
     def _target_profile(self, mention: str | None, base_ctx: dict) -> tuple[str | None, str, dict | None]:
@@ -736,6 +750,7 @@ class WithCareAgent:
                "extracted_procedure": args.get("procedure", "Appointment"),
                "extracted_hospital": args.get("hospital", ""),
                "extracted_start_datetime": start_iso, "extracted_end_datetime": end_iso,
+               "recurrence": (args.get("recurrence") or "none"),
                "for_member": args.get("for_member") or base_ctx.get("for_member", "self"),
                "care_plan_steps": [], "user_message": args.get("procedure", ""),
                "care_plan_context": {"intent_summary": args.get("procedure", ""), "ordered_steps": [],

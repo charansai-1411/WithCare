@@ -10,6 +10,8 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+_RRULE = {"daily": "RRULE:FREQ=DAILY", "weekly": "RRULE:FREQ=WEEKLY", "monthly": "RRULE:FREQ=MONTHLY"}
+
 
 class ActionAgent(BaseAgent):
     name = "action_agent"
@@ -30,6 +32,9 @@ class ActionAgent(BaseAgent):
         tokens         = context.get("connector_tokens", {}) or {}
         cal_token      = tokens.get("calendar")
         drive_token    = tokens.get("drive")
+        # Recurrence — lets a scheduled activity (e.g. gym) repeat daily/weekly.
+        recurrence     = (context.get("recurrence") or "none").lower()
+        rrule          = _RRULE.get(recurrence)
 
         # Build event title: "Eye Check-up — LV Prasad Eye Institute"
         summary = procedure
@@ -59,6 +64,8 @@ class ActionAgent(BaseAgent):
             s_dt = datetime.fromisoformat(start_dt)
             e_dt = datetime.fromisoformat(end_dt)
             time_str = f"{s_dt.strftime('%d %b %Y, %I:%M %p')} – {e_dt.strftime('%I:%M %p')} IST"
+            if recurrence in ("daily", "weekly", "monthly"):
+                time_str += f", repeating {recurrence}"
         except Exception:
             time_str = start_dt[:10]
 
@@ -78,7 +85,7 @@ class ActionAgent(BaseAgent):
         }
 
         try:
-            event = await create_calendar_event(calendar_id=primary_calendar_id, access_token=cal_token, **event_data)
+            event = await create_calendar_event(calendar_id=primary_calendar_id, access_token=cal_token, recurrence=rrule, **event_data)
             html_link = event["html_link"]
             event_id  = event["event_id"]
         except CalendarActionError as e:
