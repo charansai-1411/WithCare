@@ -11,8 +11,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# App code
+# App code + skill playbooks (load_skill reads /app/skills/*.md at runtime)
 COPY app ./app
+COPY skills ./skills
 
 # Cloud Run provides $PORT (defaults to 8080). Bind uvicorn to it.
 ENV PORT=8080
