@@ -24,6 +24,10 @@ class DietAgent(BaseAgent):
         conditions = member.get("conditions") or ""
         memory = context.get("memory") or ""
         goal = context.get("goal") or context.get("focus") or "maintain (normal)"
+        adjustment = (context.get("adjustment") or "").strip()
+
+        # If the user is changing an existing plan, start from it and apply the change.
+        current_plan = get_plan(context.get("active_profile_id"), "diet_plan") if adjustment else ""
 
         # Full physical profile so portions/calories/macros can be tailored.
         facts = []
@@ -52,6 +56,16 @@ class DietAgent(BaseAgent):
                 "meal timing with workouts:\n"
                 f"----- CURRENT WORKOUT PLAN -----\n{workout}\n--------------------------------\n"
                 if workout else ""
+            )
+            + (
+                "\nThe user wants to CHANGE their existing diet plan. Apply this requested change "
+                f"and keep the rest of what already works:\nCHANGE REQUESTED: {adjustment}\n"
+                "Regenerate the FULL 7-day plan (Day 1–7) with the change applied — do not return a "
+                "partial plan. Honour any dietary restriction implied by the change (e.g. "
+                "vegetarian, no dairy, an allergy).\n"
+                f"----- CURRENT DIET PLAN TO MODIFY -----\n{current_plan}\n---------------------------------------\n"
+                if adjustment and current_plan else
+                (f"\nApply this preference to the plan: {adjustment}.\n" if adjustment else "")
             )
         )
         try:

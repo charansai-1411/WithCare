@@ -10,3 +10,17 @@ export async function fetchKgItems(userId, kind) {
     return [];
   }
 }
+
+// Delete any KG item (reminder, appointment, plan, memory fact). For reminders/appointments the
+// backend also removes the linked Google Calendar event.
+export async function deleteKgItem(userId, nodeId) {
+  try {
+    const r = await fetch(`${BASE}/api/kg/items/${nodeId}`, {
+      method: 'DELETE',
+      headers: { 'x-user-id': userId },
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}

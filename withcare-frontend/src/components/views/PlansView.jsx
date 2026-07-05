@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { fetchKgItems } from '../../services/kgApi';
+import { fetchKgItems, deleteKgItem } from '../../services/kgApi';
 import AskBar from '../AskBar';
 import PlanCards from '../PlanCards';
 import { SkeletonList } from '../ui/Skeleton';
@@ -43,8 +43,18 @@ export default function PlansView({ userId, onAsk }) {
   const [tab, setTab] = useState('all');
   const [person, setPerson] = useState('__all');
 
+  const [busy, setBusy] = useState({});
+
   const load = useCallback(() => { fetchKgItems(userId, 'plans').then(setItems); }, [userId]);
   useEffect(() => { load(); }, [load]);
+
+  async function remove(it) {
+    if (!window.confirm(`Delete this plan?\n\n“${it.name}”`)) return;
+    setBusy((b) => ({ ...b, [it.id]: true }));
+    const ok = await deleteKgItem(userId, it.id);
+    if (ok) setItems((prev) => (prev || []).filter((x) => x.id !== it.id));
+    else setBusy((b) => ({ ...b, [it.id]: false }));
+  }
 
   const list = items || [];
   const persons = useMemo(() => [...new Set(list.map(i => i.profile_name).filter(Boolean))], [list]);
@@ -98,20 +108,26 @@ export default function PlansView({ userId, onAsk }) {
               const expanded = open[it.id];
               return (
                 <div key={it.id} className="bg-surface-container-lowest border border-outline-variant rounded-card shadow-sm overflow-hidden">
-                  <button onClick={() => setOpen((o) => ({ ...o, [it.id]: !o[it.id] }))}
-                    className="w-full flex items-center gap-3.5 px-5 py-4 text-left hover:bg-surface-container/40 transition-colors">
-                    <div className={`w-11 h-11 rounded-xl shrink-0 flex items-center justify-center ${isDiet ? 'bg-tertiary-fixed' : 'bg-g-green-tint'}`}>
-                      <Sym name={isDiet ? 'nutrition' : 'directions_run'} className={`text-[22px] ${isDiet ? 'text-tertiary' : 'text-g-green'}`} fill />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[15.5px] font-semibold text-on-surface truncate">{it.name}</div>
-                      <div className="flex gap-1.5 mt-1.5">
-                        {it.profile_name && <span className="px-2.5 py-0.5 bg-primary-fixed text-on-primary-fixed rounded-full text-[11.5px] font-medium">{it.profile_name}</span>}
-                        <span className="px-2.5 py-0.5 bg-g-green-tint text-g-green-text rounded-full text-[11.5px] font-medium">{isDiet ? 'Diet plan' : 'Workout plan'}</span>
+                  <div className="w-full flex items-center gap-1 pr-3">
+                    <button onClick={() => setOpen((o) => ({ ...o, [it.id]: !o[it.id] }))}
+                      className="flex-1 min-w-0 flex items-center gap-3.5 px-5 py-4 text-left hover:bg-surface-container/40 transition-colors">
+                      <div className={`w-11 h-11 rounded-xl shrink-0 flex items-center justify-center ${isDiet ? 'bg-tertiary-fixed' : 'bg-g-green-tint'}`}>
+                        <Sym name={isDiet ? 'nutrition' : 'directions_run'} className={`text-[22px] ${isDiet ? 'text-tertiary' : 'text-g-green'}`} fill />
                       </div>
-                    </div>
-                    <Sym name={expanded ? 'expand_less' : 'expand_more'} className="text-on-surface-variant text-[22px]" />
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[15.5px] font-semibold text-on-surface truncate">{it.name}</div>
+                        <div className="flex gap-1.5 mt-1.5">
+                          {it.profile_name && <span className="px-2.5 py-0.5 bg-primary-fixed text-on-primary-fixed rounded-full text-[11.5px] font-medium">{it.profile_name}</span>}
+                          <span className="px-2.5 py-0.5 bg-g-green-tint text-g-green-text rounded-full text-[11.5px] font-medium">{isDiet ? 'Diet plan' : 'Workout plan'}</span>
+                        </div>
+                      </div>
+                      <Sym name={expanded ? 'expand_less' : 'expand_more'} className="text-on-surface-variant text-[22px]" />
+                    </button>
+                    <button onClick={() => remove(it)} disabled={busy[it.id]} title="Delete plan"
+                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-on-surface-variant hover:bg-error-container/50 hover:text-error transition-colors disabled:opacity-40">
+                      <Sym name={busy[it.id] ? 'hourglass_empty' : 'delete'} className="text-[19px]" />
+                    </button>
+                  </div>
                   {expanded && (
                     <div className="px-5 pb-5 pt-3 border-t border-outline-variant/60">
                       <PlanCards text={it.data?.plan} variant="tabs" />

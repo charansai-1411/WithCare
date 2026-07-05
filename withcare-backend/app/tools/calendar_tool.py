@@ -95,6 +95,60 @@ async def create_calendar_event(
         raise CalendarActionError(f"Failed to create calendar event: {e}")
 
 
+async def delete_calendar_event(calendar_id: str, event_id: str) -> bool:
+    """Delete a calendar event. Best-effort — returns True on success, False otherwise
+    (a missing event or auth issue must not crash the caller)."""
+    if not event_id:
+        return False
+    try:
+        service = get_calendar_service()
+        service.events().delete(calendarId=calendar_id or "primary", eventId=event_id).execute()
+        logger.info(f"Calendar event deleted: {event_id}")
+        return True
+    except Exception as e:
+        logger.warning(f"delete_calendar_event failed for {event_id}: {e}")
+        return False
+
+
+async def update_calendar_event(
+    calendar_id: str,
+    event_id: str,
+    summary: str | None = None,
+    start_datetime: str | None = None,
+    end_datetime: str | None = None,
+    recurrence: str | None = None,
+    reminder_minutes: list[int] | None = None,
+) -> bool:
+    """Patch an existing calendar event in place (only the fields provided). Best-effort."""
+    if not event_id:
+        return False
+    try:
+        service = get_calendar_service()
+        patch: dict = {}
+        if summary is not None:
+            patch["summary"] = summary
+        if start_datetime:
+            patch["start"] = {"dateTime": start_datetime, "timeZone": "Asia/Kolkata"}
+        if end_datetime:
+            patch["end"] = {"dateTime": end_datetime, "timeZone": "Asia/Kolkata"}
+        if recurrence is not None:
+            patch["recurrence"] = [recurrence] if recurrence else []
+        if reminder_minutes:
+            overrides = []
+            for m in reminder_minutes:
+                overrides.append({"method": "popup", "minutes": m})
+                overrides.append({"method": "email", "minutes": m})
+            patch["reminders"] = {"useDefault": False, "overrides": overrides}
+        if not patch:
+            return False
+        service.events().patch(calendarId=calendar_id or "primary", eventId=event_id, body=patch).execute()
+        logger.info(f"Calendar event updated: {event_id}")
+        return True
+    except Exception as e:
+        logger.warning(f"update_calendar_event failed for {event_id}: {e}")
+        return False
+
+
 async def sync_to_family_calendar(
     member_calendar_id: str,
     event_data: dict,

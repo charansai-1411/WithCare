@@ -33,6 +33,15 @@ export async function updateProfile(userId, profileId, data) {
   return r.json();
 }
 
+export async function fetchProfileGraph(userId, profileId) {
+  try {
+    const r = await fetch(`${BASE}/api/profiles/${profileId}/graph`, { headers: headers(userId) });
+    return r.ok ? r.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteProfile(userId, profileId) {
   const r = await fetch(`${BASE}/api/profiles/${profileId}`, {
     method: 'DELETE',

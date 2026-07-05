@@ -9,6 +9,7 @@ class SourcedStep(BaseModel):
     source_label: str
     agent: str
     distance_km: float | None = None
+    meta: dict | None = None  # extra structured data for rich cards (e.g. product price/tag)
 
 
 class AgentResult(BaseModel):

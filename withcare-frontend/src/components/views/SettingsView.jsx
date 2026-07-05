@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GeminiBadge, GeminiDisclaimer } from '../ui/GeminiBadge';
 import GeminiLogo from '../ui/GeminiLogo';
+import MemoryManager from '../MemoryManager';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -27,7 +28,8 @@ function Row({ label, sub, children }) {
   );
 }
 
-export default function SettingsView({ user, location, onEditLocation, onSignOut }) {
+export default function SettingsView({ user, userId, location, onEditLocation, onSignOut }) {
+  const [showMemory, setShowMemory] = useState(false);
   return (
     <div className="flex-1 overflow-y-auto px-8 py-7 bg-background">
       <div className="max-w-3xl mx-auto space-y-5 m3-stagger">
@@ -72,7 +74,7 @@ export default function SettingsView({ user, location, onEditLocation, onSignOut
 
         <Card title="Privacy & Data">
           <Row label="Memory" sub="What WithCare remembers about each profile">
-            <button className="text-[13px] font-semibold text-primary hover:underline">Manage</button>
+            <button onClick={() => setShowMemory(true)} className="text-[13px] font-semibold text-primary hover:underline">Manage</button>
           </Row>
           <Row label="Export my data"><button className="text-[13px] font-semibold text-primary hover:underline">Export</button></Row>
           <Row label="Delete account" sub="Permanently remove your data">
@@ -86,6 +88,7 @@ export default function SettingsView({ user, location, onEditLocation, onSignOut
           <GeminiDisclaimer className="text-center max-w-md" />
         </div>
       </div>
+      {showMemory && <MemoryManager userId={userId} onClose={() => setShowMemory(false)} />}
     </div>
   );
 }

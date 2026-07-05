@@ -222,6 +222,48 @@ async def answer(user_id: str, question: str, label: str | None = None) -> dict:
     return {"answer": text.strip(), "sources": _dedupe_sources(hits), "found": True}
 
 
+def documents_text(user_id: str, doc_ids: list[str], max_chars: int = 6000) -> dict:
+    """Full extracted text of specific documents — used when the user ATTACHES files to a chat
+    message so the agent can read them directly (not RAG top-k). Returns which are still
+    processing / failed so the agent can respond honestly.
+    { found, text, labels[], pending[], failed[] }"""
+    out = {"found": False, "text": "", "labels": [], "pending": [], "failed": []}
+    ids = [d for d in (doc_ids or []) if d]
+    if not ids:
+        return out
+    db = get_db()
+    qmarks = ",".join("?" * len(ids))
+    rows = db.execute(
+        f"SELECT id, label, filename, status FROM documents WHERE user_id=? AND id IN ({qmarks})",
+        (user_id, *ids),
+    ).fetchall()
+    parts = []
+    for d in rows:
+        label = d["label"] or d["filename"]
+        if d["status"] == "processing":
+            out["pending"].append(label)
+            continue
+        if d["status"] == "error":
+            out["failed"].append(label)
+            continue
+        chunks = db.execute(
+            "SELECT text FROM doc_chunks WHERE document_id=? ORDER BY chunk_index", (d["id"],)
+        ).fetchall()
+        text = "\n".join(c["text"] for c in chunks).strip()
+        if text:
+            out["labels"].append(label)
+            parts.append(f"[{label}]\n{text}")
+        else:
+            out["failed"].append(label)
+    db.close()
+    joined = "\n\n".join(parts)
+    if len(joined) > max_chars:
+        joined = joined[:max_chars] + "\n…(truncated)"
+    out["text"] = joined
+    out["found"] = bool(parts)
+    return out
+
+
 def context_for_agent(user_id: str, question: str, label: str | None = None) -> dict:
     """Lightweight retrieval for the orchestrator tool: returns the raw excerpts + sources so the
     main chat's LLM composes the answer itself (no extra generate call here)."""

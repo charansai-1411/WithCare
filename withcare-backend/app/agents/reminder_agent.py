@@ -98,6 +98,7 @@ class ReminderAgent(BaseAgent):
         summary = f"Reminder: {message}"
 
         event_link = ""
+        event_id = ""
         try:
             event = await create_calendar_event(
                 calendar_id=calendar_id,
@@ -109,6 +110,7 @@ class ReminderAgent(BaseAgent):
                 recurrence=rrule,
             )
             event_link = event.get("html_link", "")
+            event_id = event.get("event_id", "")
         except CalendarActionError as e:
             self.logger.warning(f"reminder calendar create failed: {e}")
 
@@ -124,7 +126,8 @@ class ReminderAgent(BaseAgent):
         try:
             write_fact(user_id, recip_pid, "reminder", message,
                        data={"time": time_str, "recurrence": recurrence, "lead_minutes": lead,
-                             "recipient": recip_name}, predicate="has_reminder")
+                             "recipient": recip_name, "event_id": event_id,
+                             "calendar_id": calendar_id}, predicate="has_reminder")
         except Exception as ex:
             self.logger.warning(f"KG write (reminder) failed: {ex}")
 

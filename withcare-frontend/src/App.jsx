@@ -8,8 +8,11 @@ import PlansView from './components/views/PlansView';
 import ProfilesView from './components/views/ProfilesView';
 import ProfileDetailView from './components/views/ProfileDetailView';
 import ReaderView from './components/views/ReaderView';
+import HealthView from './components/views/HealthView';
 import ConnectorsView from './components/views/ConnectorsView';
 import SettingsView from './components/views/SettingsView';
+import { getConnections, setConnected, requestGoogleConsent } from './services/connectorsService';
+import { fetchAuthConfig } from './services/authService';
 import { useChat, dbMsgToUiMsg } from './hooks/useChat';
 import { getTheme, toggleTheme } from './services/themeService';
 import { getStoredUser, signOut } from './services/authService';
@@ -19,7 +22,7 @@ import { fetchConversations, fetchMessages, saveMessage, deleteConversation } fr
 
 const VIEW_TITLE = {
   tasks: 'Tasks & Reminders', plans: 'Workout & Diet Plans', reader: 'Reader',
-  profiles: 'Care Profiles', connectors: 'Connectors', settings: 'Settings',
+  health: 'Health', profiles: 'Care Profiles', connectors: 'Connectors', settings: 'Settings',
 };
 
 function Sym({ name, className = '', fill = false }) {
@@ -39,10 +42,35 @@ export default function App() {
   const [activeConvId,    setActiveConvId]    = useState(null);
   const [loadingConv,     setLoadingConv]     = useState(false);
   const [userLocation,    setUserLocation]    = useState({ city: '', lat: null, lng: null });
+  const [connections,   setConnections]   = useState({});
+  const [oauthClientId, setOauthClientId] = useState('');
+  const healthConnected = !!connections.fit;
+  const connectedKeys = Object.keys(connections).filter(k => connections[k]);
 
   const pendingConvId = useRef(null);
   const userId = user?.id;
   const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0] || null;
+
+  // Connect: request REAL Google consent for the connector's scopes, then mark connected.
+  const connectConnector = useCallback(async (key) => {
+    try {
+      if (oauthClientId && window.google?.accounts?.oauth2) {
+        await requestGoogleConsent(oauthClientId, key);  // real Google consent popup
+      }
+      // (no client id → dev/local: connect directly so testing still works)
+      setConnected(userId, key, true);
+      setConnections(getConnections(userId));
+      if (key === 'fit') setActiveView('health');
+    } catch (e) {
+      console.warn('Connect cancelled:', e.message);  // user closed consent / not configured
+    }
+  }, [userId, oauthClientId]);
+
+  const disconnectConnector = useCallback((key) => {
+    setConnected(userId, key, false);
+    setConnections(getConnections(userId));
+    if (key === 'fit') setActiveView(v => (v === 'health' ? 'connectors' : v));
+  }, [userId]);
 
   const handleSave = useCallback(async ({ role, content, carePlan }) => {
     if (!userId) return;
@@ -73,6 +101,7 @@ export default function App() {
 
   const { messages, input, setInput, send, reset, onKey, msgVM } = useChat({
     onSave: handleSave, location: userLocation, profile: activeProfile, userId,
+    connectors: connectedKeys,
   });
 
   useEffect(() => {
@@ -83,6 +112,8 @@ export default function App() {
     });
     fetchConversations(userId).then(setConversations);
     getLocation().then(loc => { if (loc) setUserLocation(loc); });
+    setConnections(getConnections(userId));
+    fetchAuthConfig().then(c => setOauthClientId(c.google_client_id || ''));
   }, [userId]);
 
   const openConversation = useCallback(async (convId) => {
@@ -184,6 +215,7 @@ export default function App() {
           conversations={conversations} activeConvId={activeConvId}
           onConvClick={openConversation} onConvDelete={removeConversation} onNewChat={newChat}
           activeView={activeView} onSelectView={setActiveView}
+          healthConnected={healthConnected}
           user={user} onSignOut={handleSignOut}
         />
       </aside>
@@ -218,7 +250,8 @@ export default function App() {
         <div key={detailProfileId ? `pd-${detailProfileId}` : activeView} className="flex-1 flex flex-col min-h-0 m3-fade-through">
         {activeView === 'tasks' ? <TasksView userId={userId} onAsk={askFromView} />
           : activeView === 'plans' ? <PlansView userId={userId} onAsk={askFromView} />
-          : activeView === 'reader' ? <ReaderView userId={userId} />
+          : activeView === 'reader' ? <ReaderView userId={userId} onAsk={askFromView} />
+          : activeView === 'health' ? <HealthView userId={userId} profile={activeProfile} />
           : activeView === 'profiles' ? (
               detailProfileId ? (
                 <ProfileDetailView userId={userId}
@@ -231,14 +264,14 @@ export default function App() {
                   onSelect={setDetailProfileId} onAdd={() => setModal('new')} onEdit={(p) => setModal(p)} onDelete={removeProfile} />
               )
             )
-          : activeView === 'connectors' ? <ConnectorsView />
+          : activeView === 'connectors' ? <ConnectorsView connections={connections} clientId={oauthClientId} onConnect={connectConnector} onDisconnect={disconnectConnector} onOpenHealth={() => setActiveView('health')} />
           : activeView === 'settings' ? (
-              <SettingsView user={user} location={userLocation} onEditLocation={editLocation} onSignOut={handleSignOut} />
+              <SettingsView user={user} userId={userId} location={userLocation} onEditLocation={editLocation} onSignOut={handleSignOut} />
             )
           : loadingConv ? (
               <div className="flex-1 flex items-center justify-center text-on-surface-variant text-sm">Loading conversation…</div>
             )
-          : <ChatThread messages={messages} input={input} setInput={setInput} send={send} onKey={onKey} msgVM={msgVM} />}
+          : <ChatThread messages={messages} input={input} setInput={setInput} send={send} onKey={onKey} msgVM={msgVM} userId={userId} onOpenConnectors={() => setActiveView('connectors')} />}
         </div>
       </div>
 

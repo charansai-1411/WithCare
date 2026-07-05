@@ -69,6 +69,72 @@ def write_fact(
     return node_id
 
 
+def get_node(node_id: str, user_id: str) -> dict | None:
+    """Fetch a single KG node owned by the user, with `data` parsed. None if not found."""
+    if not node_id:
+        return None
+    db = get_db()
+    row = db.execute(
+        "SELECT * FROM kg_nodes WHERE id=? AND user_id=?", (node_id, user_id)
+    ).fetchone()
+    db.close()
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["data"] = json.loads(d.get("data") or "{}")
+    except Exception:
+        d["data"] = {}
+    return d
+
+
+def delete_node(user_id: str, node_id: str) -> dict | None:
+    """Delete a KG node (scoped to the user) and any edges touching it. Returns the deleted
+    node (so callers can clean up an attached calendar event), or None if it wasn't found."""
+    node = get_node(node_id, user_id)
+    if not node:
+        return None
+    db = get_db()
+    db.execute("DELETE FROM kg_edges WHERE user_id=? AND (src=? OR dst=?)", (user_id, node_id, node_id))
+    db.execute("DELETE FROM kg_nodes WHERE id=? AND user_id=?", (node_id, user_id))
+    db.commit()
+    db.close()
+    return node
+
+
+def find_nodes(
+    user_id: str,
+    node_type: str,
+    profile_id: str | None = None,
+    name_contains: str | None = None,
+) -> list[dict]:
+    """Find KG nodes of a type for a user (optionally a profile), newest first. If
+    `name_contains` is given, prefer nodes whose name matches it (case-insensitive)."""
+    db = get_db()
+    sql = "SELECT * FROM kg_nodes WHERE user_id=? AND type=?"
+    params: list = [user_id, node_type]
+    if profile_id:
+        sql += " AND profile_id IS ?"
+        params.append(profile_id)
+    sql += " ORDER BY updated_at DESC"
+    rows = db.execute(sql, params).fetchall()
+    db.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["data"] = json.loads(d.get("data") or "{}")
+        except Exception:
+            d["data"] = {}
+        out.append(d)
+    if name_contains:
+        needle = name_contains.strip().lower()
+        matched = [n for n in out if needle in (n.get("name") or "").lower()]
+        if matched:
+            return matched
+    return out
+
+
 def sync_profile_to_kg(user_id: str, profile: dict) -> None:
     """On profile create/edit, turn each listed condition into a condition node so the graph
     reflects the edit automatically."""
@@ -93,6 +159,7 @@ _TYPE_LABEL = {
     "reminder": "Reminders",
     "task": "Tasks",
     "health_metric": "Health",
+    "note": "Remembered",
 }
 _TYPE_ORDER = list(_TYPE_LABEL.keys())
 

@@ -14,13 +14,27 @@ function stepsToPlan(steps) {
   const facilities = [];
   const coverage   = [];
   const plans      = [];
+  const products   = [];
   const schedule   = { events: [], bothCalendars: false, confirmText: 'Added to your calendar' };
 
   for (const step of steps) {
     const agent = step.agent || '';
     const url   = step.source_url || '';
 
-    if (agent === 'diet_agent' || agent === 'workout_agent') {
+    if (agent === 'product_agent') {
+      const m = step.meta || {};
+      products.push({
+        name:         step.action,
+        platform:     step.source_label || m.platform || '',
+        priceDisplay: m.price_display || '',
+        price:        m.price_inr ?? null,
+        rating:       m.rating || '',
+        note:         step.detail || m.note || '',
+        url,
+        tag:          m.tag || '',
+        isMedicine:   !!m.is_medicine,
+      });
+    } else if (agent === 'diet_agent' || agent === 'workout_agent') {
       // Full multi-day plan text — rendered as an accordion card in chat.
       plans.push({
         kind:  agent === 'diet_agent' ? 'diet' : 'workout',
@@ -61,6 +75,7 @@ function stepsToPlan(steps) {
     coverage,
     medicines: [],
     plans,
+    products,
     schedule: schedule.events.length > 0 ? schedule : null,
   };
 }
@@ -124,7 +139,7 @@ function generateSessionId() {
   return 'sess-' + Math.random().toString(36).slice(2, 10) + '-' + Date.now();
 }
 
-export function useChat({ onSave, location = {}, profile = null, userId = '' } = {}) {
+export function useChat({ onSave, location = {}, profile = null, userId = '', connectors = [] } = {}) {
   const [messages,  setMessages]  = useState([]);
   const [input,     setInputRaw]  = useState('');
   const [animMsgId, setAnimMsgId] = useState(null);
@@ -168,9 +183,12 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
     timerRef.current = setTimeout(tick, 400);
   }
 
-  function send(textArg) {
+  function send(textArg, attachments) {
     const raw = (typeof textArg === 'string' ? textArg : input).trim();
-    if (!raw) return;
+    const atts = Array.isArray(attachments) ? attachments : [];
+    if (!raw && atts.length === 0) return;
+    // What we send to the agent — if the user only attached a file, prompt it to read the doc.
+    const outgoing = raw || 'I’ve attached a document — please read it and answer from it.';
 
     const now = Date.now();
     const uid = 'u' + now;
@@ -192,7 +210,7 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
 
     setMessages(prev => [
       ...prev,
-      { id: uid, role: 'user', text: raw },
+      { id: uid, role: 'user', text: raw, attachments: atts },
       { id: aid, role: 'assistant', loading: true, trace: [], intro: '', plan: null, error: null, expanded: false },
     ]);
     setInputRaw('');
@@ -200,7 +218,7 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
     setAnimStep(0);
 
     // Save user message to DB
-    onSave?.({ role: 'user', content: raw, title: raw });
+    onSave?.({ role: 'user', content: raw || '(document attached)', title: raw || 'Document' });
 
     function handleClarify(question) {
       setMessages(prev => prev.map(m =>
@@ -234,7 +252,7 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
 
     streamChat(
       {
-        message: raw,
+        message: outgoing,
         sessionId: sessionId.current,
         userId,
         history,
@@ -242,6 +260,8 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
         coordinates: (location.lat && location.lng) ? { lat: location.lat, lng: location.lng } : null,
         familyProfile,
         forMember,
+        attachmentDocIds: atts.map(a => a.docId).filter(Boolean),
+        connectors,
       },
       {
         onChunk(chunk) {
@@ -293,7 +313,7 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
   }
 
   function msgVM(m, accent) {
-    if (m.role === 'user') return { id: m.id, isUser: true, isAssistant: false, text: m.text };
+    if (m.role === 'user') return { id: m.id, isUser: true, isAssistant: false, text: m.text, attachments: m.attachments || [] };
 
     const animating = animMsgId === m.id;
     const step      = animating ? animStep : 999;
@@ -376,6 +396,7 @@ export function useChat({ onSave, location = {}, profile = null, userId = '' } =
       summaryLabel: trace.length + ' specialists consulted',
       traceLines, traceDots,
       plans:      plan.plans || [],
+      products:   plan.products || [],
       hasFacilities: !!(plan.facilities && plan.facilities.length),
       hasCoverage:   !!(plan.coverage   && plan.coverage.length),
       hasMedicines:  !!(plan.medicines  && plan.medicines.length),

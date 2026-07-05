@@ -4,9 +4,11 @@ No LLM calls — just reads the kg_nodes the agents wrote.
 """
 import json
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, HTTPException
 
 from app.db.database import get_db
+from app.services.memory_service import get_node, delete_node
+from app.tools.calendar_tool import delete_calendar_event
 
 router = APIRouter(prefix="/api/kg", tags=["Knowledge"])
 
@@ -43,3 +45,18 @@ def items(kind: str, x_user_id: str = Header(...)):
             d["data"] = {}
         out.append(d)
     return out
+
+
+@router.delete("/items/{node_id}")
+async def delete_kg_item(node_id: str, x_user_id: str = Header(...)):
+    """Delete any KG item (reminder, appointment, plan, memory fact…). If it's a reminder or
+    appointment with an attached calendar event, remove that event too so the calendar stays
+    in sync."""
+    node = get_node(node_id, x_user_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="Item not found")
+    data = node.get("data") or {}
+    if node["type"] in ("reminder", "appointment") and data.get("event_id"):
+        await delete_calendar_event(data.get("calendar_id") or "primary", data["event_id"])
+    delete_node(x_user_id, node_id)
+    return {"ok": True, "type": node["type"]}

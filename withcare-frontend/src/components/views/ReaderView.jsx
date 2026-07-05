@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { fetchDocuments, uploadDocument, deleteDocument, askDocuments } from '../../services/readerApi';
+import { fetchDocuments, uploadDocument, deleteDocument } from '../../services/readerApi';
+import AskBar from '../AskBar';
 import { SkeletonList } from '../ui/Skeleton';
 
 function Sym({ name, className = '', fill = false }) {
@@ -13,18 +14,23 @@ const KIND = {
   document:     { icon: 'description',  tile: 'bg-g-yellow/15 text-g-yellow' },
 };
 
-export default function ReaderView({ userId }) {
+export default function ReaderView({ userId, onAsk }) {
   const [docs, setDocs] = useState(null);
   const [label, setLabel] = useState('');
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
-  const [question, setQuestion] = useState('');
-  const [asking, setAsking] = useState(false);
-  const [result, setResult] = useState(null);
   const fileRef = useRef(null);
 
   const load = useCallback(() => { fetchDocuments(userId).then(setDocs); }, [userId]);
   useEffect(() => { load(); }, [load]);
+
+  // Auto-refresh while any document is still being read (ingest happens off the request), so a
+  // file uploaded from chat shows up here without a manual refresh.
+  useEffect(() => {
+    if (!docs || !docs.some((d) => d.status === 'processing')) return;
+    const t = setTimeout(load, 3000);
+    return () => clearTimeout(t);
+  }, [docs, load]);
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -48,25 +54,11 @@ export default function ReaderView({ userId }) {
     load();
   }
 
-  async function ask(q) {
-    const query = (q ?? question).trim();
-    if (!query) return;
-    setAsking(true); setResult(null); setErr('');
-    try {
-      const res = await askDocuments(userId, query);
-      setResult({ question: query, ...res });
-    } catch {
-      setErr('Could not answer right now.');
-    } finally {
-      setAsking(false);
-    }
-  }
-
   const list = docs || [];
-  const hasReady = list.some((d) => d.status === 'ready');
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-7 bg-background">
+    <div className="flex-1 flex flex-col min-h-0 bg-background">
+      <div className="flex-1 overflow-y-auto px-8 py-7">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-start gap-3 mb-1">
           <div className="w-10 h-10 rounded-xl intelligence-gradient flex items-center justify-center shrink-0">
@@ -92,39 +84,6 @@ export default function ReaderView({ userId }) {
         </div>
         {err && <div className="text-error text-[13px] mt-2">{err}</div>}
         <p className="text-[11.5px] text-on-surface-variant/70 mt-2">PDF or image (PNG/JPG), up to 12 MB. Scans and photos are read automatically.</p>
-
-        {/* Ask */}
-        {hasReady && (
-          <div className="mt-6 bg-surface-container-lowest border border-outline-variant rounded-card p-4">
-            <div className="flex items-center gap-2.5">
-              <input value={question} onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
-                placeholder="Ask your documents… e.g. “What's my room-rent limit?”"
-                className="flex-1 bg-surface-container-low border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-action px-5 py-3 text-on-surface outline-none transition" />
-              <button onClick={() => ask()} disabled={asking}
-                className="w-12 h-12 rounded-full intelligence-gradient text-white flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition shrink-0 disabled:opacity-60">
-                <Sym name={asking ? 'progress_activity' : 'send'} className={`text-[22px] ${asking ? 'animate-spin' : ''}`} fill />
-              </button>
-            </div>
-
-            {result && (
-              <div className="mt-4 border-t border-outline-variant/60 pt-4">
-                <div className="text-[13px] font-semibold text-on-surface-variant mb-1">{result.question}</div>
-                <div className="text-[14.5px] text-on-surface leading-relaxed whitespace-pre-line">{result.answer}</div>
-                {result.sources?.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {result.sources.map((s, i) => (
-                      <span key={i} title={s.snippet}
-                        className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/60">
-                        <Sym name="description" className="text-[14px] text-primary" />{s.label}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Documents */}
         <h2 className="font-title-lg text-[15px] text-on-surface mt-7 mb-3">Your documents</h2>
@@ -163,6 +122,15 @@ export default function ReaderView({ userId }) {
           </div>
         )}
       </div>
+      </div>
+      <AskBar
+        placeholder="Ask about your documents… e.g. “What's my room-rent limit?”"
+        suggestions={[
+          { icon: 'policy', label: 'My room-rent limit', q: "What's my room-rent limit in my insurance policy?" },
+          { icon: 'medication', label: 'Summarize my prescription', q: 'Summarize my prescription' },
+        ]}
+        onAsk={onAsk}
+      />
     </div>
   );
 }

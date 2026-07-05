@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { fetchKgItems } from '../../services/kgApi';
+import { fetchKgItems, deleteKgItem } from '../../services/kgApi';
 import AskBar from '../AskBar';
 import { SkeletonList } from '../ui/Skeleton';
 
@@ -57,8 +57,19 @@ export default function TasksView({ userId, onAsk }) {
   const [person, setPerson] = useState('__all');
   const [paused, setPaused] = useState({});
 
+  const [busy, setBusy] = useState({});
+
   const load = useCallback(() => { fetchKgItems(userId, 'tasks').then(setItems); }, [userId]);
   useEffect(() => { load(); }, [load]);
+
+  async function remove(it) {
+    const label = it.type === 'reminder' ? 'reminder' : 'appointment';
+    if (!window.confirm(`Delete this ${label}${it.type !== 'diet_plan' ? ' and its calendar event' : ''}?\n\n“${it.name}”`)) return;
+    setBusy((b) => ({ ...b, [it.id]: true }));
+    const ok = await deleteKgItem(userId, it.id);
+    if (ok) setItems((prev) => (prev || []).filter((x) => x.id !== it.id));
+    else setBusy((b) => ({ ...b, [it.id]: false }));
+  }
 
   const list = items || [];
   const persons = useMemo(() => [...new Set(list.map(i => i.profile_name).filter(Boolean))], [list]);
@@ -129,9 +140,15 @@ export default function TasksView({ userId, onAsk }) {
                       {it.profile_name && <span className="px-2.5 py-0.5 bg-g-green-tint text-g-green-text rounded-full text-[11.5px] font-medium">For {it.profile_name}</span>}
                     </div>
                   </div>
-                  {isReminder
-                    ? <Toggle on={on} onClick={() => setPaused((p) => ({ ...p, [it.id]: on }))} />
-                    : <span className="text-[11px] text-on-surface-variant/70 shrink-0">{fmtDate(it.updated_at)}</span>}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isReminder
+                      ? <Toggle on={on} onClick={() => setPaused((p) => ({ ...p, [it.id]: on }))} />
+                      : <span className="text-[11px] text-on-surface-variant/70">{fmtDate(it.updated_at)}</span>}
+                    <button onClick={() => remove(it)} disabled={busy[it.id]} title="Delete"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-error-container/50 hover:text-error transition-colors disabled:opacity-40">
+                      <Sym name={busy[it.id] ? 'hourglass_empty' : 'delete'} className="text-[19px]" />
+                    </button>
+                  </div>
                 </div>
               );
             })}

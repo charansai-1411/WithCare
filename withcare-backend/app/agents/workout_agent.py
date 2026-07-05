@@ -6,7 +6,7 @@ person; a new plan supersedes the old).
 from app.agents.base_agent import BaseAgent
 from app.models.response_models import AgentResult, SourcedStep
 from app.services.gemini_service import generate_text
-from app.services.memory_service import write_fact
+from app.services.memory_service import write_fact, get_plan
 from app.services.skills import load_skill
 
 
@@ -22,6 +22,8 @@ class WorkoutAgent(BaseAgent):
         conditions = member.get("conditions") or ""
         memory = context.get("memory") or ""
         goal = context.get("goal") or context.get("focus") or "maintain (general fitness)"
+        adjustment = (context.get("adjustment") or "").strip()
+        current_plan = get_plan(context.get("active_profile_id"), "workout_plan") if adjustment else ""
 
         # Full physical profile so the plan can tailor load/intensity/calorie needs.
         facts = []
@@ -39,6 +41,15 @@ class WorkoutAgent(BaseAgent):
             + (f"Other details: {member['notes']}.\n" if member.get("notes") else "")
             + f"What we know about them: {memory or '(nothing extra)'}\n"
             f"Use their age/weight/height/conditions to set intensity and load safely.\n"
+            + (
+                "\nThe user wants to CHANGE their existing workout plan. Apply this requested change "
+                f"and keep the rest of what already works:\nCHANGE REQUESTED: {adjustment}\n"
+                "Regenerate the FULL weekly plan (Day 1–7) with the change applied — not a partial "
+                "plan.\n"
+                f"----- CURRENT WORKOUT PLAN TO MODIFY -----\n{current_plan}\n------------------------------------------\n"
+                if adjustment and current_plan else
+                (f"\nApply this preference to the plan: {adjustment}.\n" if adjustment else "")
+            )
         )
         try:
             plan = (await generate_text(load_skill("workout"), prompt)).strip()

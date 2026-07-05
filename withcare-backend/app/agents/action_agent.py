@@ -132,7 +132,8 @@ class ActionAgent(BaseAgent):
             write_fact(
                 context.get("user_id", ""), context.get("active_profile_id"),
                 "appointment", summary,
-                data={"when": time_str, "hospital": hospital, "url": html_link, "event_id": event_id},
+                data={"when": time_str, "hospital": hospital, "url": html_link,
+                      "event_id": event_id, "calendar_id": primary_calendar_id},
                 predicate="booked",
             )
         except Exception as ex:

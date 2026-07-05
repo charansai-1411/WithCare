@@ -1,11 +1,13 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import AgentFlowAnimation from './AgentFlowAnimation';
 import CarePlanCard from './CarePlanCard';
 import PlanCards, { hasPlanStructure } from './PlanCards';
+import ProductCards from './ProductCards';
 import GeminiLogo from './ui/GeminiLogo';
 import M3Loader from './ui/M3Loader';
 import RichText from './ui/RichText';
 import { SUGGESTIONS } from '../constants/agents';
+import { uploadDocument } from '../services/readerApi';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -22,10 +24,45 @@ function AiAvatar({ size = 40 }) {
   );
 }
 
-export default function ChatThread({ messages, input, setInput, send, onKey, msgVM }) {
+const needsConnect = (t) => /\bConnectors\b|connect (your |the )?(google )?(calendar|gmail|drive|fit)/i.test(t || '');
+
+export default function ChatThread({ messages, input, setInput, send, onKey, msgVM, userId, onUploaded, onOpenConnectors }) {
   const threadRef = useRef(null);
+  const fileRef = useRef(null);
+  // Pending attachments — shown as previews, uploaded to the Reader library, and attached to the
+  // next message the user sends. { id, name, type, url(objectURL for images), status, error, docId }
+  const [attachments, setAttachments] = useState([]);
   useEffect(() => { if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight; }, [messages]);
   const noMessages = messages.length === 0;
+
+  async function onPickFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const id = 'att' + Date.now();
+    const isImage = (file.type || '').startsWith('image/');
+    const url = isImage ? URL.createObjectURL(file) : '';
+    setAttachments((a) => [...a, { id, name: file.name, type: file.type, url, status: 'uploading' }]);
+    try {
+      const doc = await uploadDocument(userId, file, '');   // → lands in the Reader library
+      setAttachments((a) => a.map((x) => x.id === id ? { ...x, status: 'ready', docId: doc?.id } : x));
+      onUploaded?.();   // let the Reader refresh if it's open
+    } catch (ex) {
+      setAttachments((a) => a.map((x) => x.id === id ? { ...x, status: 'error', error: ex.message } : x));
+    }
+  }
+  const dropAttachment = (id) => setAttachments((a) => a.filter((x) => x.id !== id));
+
+  // Send text + any attachments together, then clear the pending attachments.
+  // Attachments always show in the message (display doesn't depend on OCR ingest succeeding).
+  function submit(text) {
+    const payload = attachments.map((a) => ({ name: a.name, type: a.type, url: a.url, docId: a.docId }));
+    send(typeof text === 'string' ? text : undefined, payload);
+    setAttachments([]);
+  }
+  function onKeyLocal(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+  }
 
   return (
     <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden relative">
@@ -58,8 +95,22 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
             if (vm.isUser) {
               return (
                 <div key={vm.id} className="flex justify-end m3-enter">
-                  <div className="max-w-[80%] bg-secondary-fixed text-on-secondary-fixed px-5 py-3 rounded-action rounded-tr-md elev-1">
-                    <p className="text-[15px] leading-relaxed">{vm.text}</p>
+                  <div className="max-w-[80%] flex flex-col items-end gap-2">
+                    {vm.attachments?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        {vm.attachments.map((a, i) => (a.url && (a.type || '').startsWith('image/'))
+                          ? <img key={i} src={a.url} alt={a.name} title={a.name}
+                              className="w-32 h-32 object-cover rounded-2xl border border-outline-variant elev-1" />
+                          : <span key={i} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant text-[12.5px] text-on-surface">
+                              <Sym name="description" className="text-primary text-[16px]" fill />{a.name}
+                            </span>)}
+                      </div>
+                    )}
+                    {vm.text && (
+                      <div className="bg-secondary-fixed text-on-secondary-fixed px-5 py-3 rounded-action rounded-tr-md elev-1">
+                        <p className="text-[15px] leading-relaxed">{vm.text}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -75,6 +126,12 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
                       ? <div className="flex-1 min-w-0"><PlanCards text={vm.intro} variant="accordion" /></div>
                       : <div className="flex-1 max-w-[85%] bg-surface-container-lowest border border-outline-variant rounded-card rounded-tl-md px-5 py-3.5">
                           <RichText text={vm.intro} />
+                          {onOpenConnectors && needsConnect(vm.intro) && (
+                            <button onClick={onOpenConnectors}
+                              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary text-on-primary text-[13px] font-semibold hover:brightness-110">
+                              <Sym name="hub" className="text-[16px]" /> Open Connectors
+                            </button>
+                          )}
                         </div>}
                   </div>
                 )}
@@ -97,6 +154,8 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
                       {vm.plans?.map((p, i) => (
                         <PlanCards key={i} text={p.text} variant="accordion" />
                       ))}
+                      {/* product price-comparison cards */}
+                      {vm.products?.length > 0 && <ProductCards products={vm.products} />}
                       {/* trace pill */}
                       <button onClick={vm.toggleExpand}
                         className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-outline-variant bg-surface-container-lowest hover:bg-surface-container">
@@ -140,13 +199,45 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
               ))}
             </div>
           )}
+          {/* Pending attachment previews (image thumbnails / file chips) */}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2.5">
+              {attachments.map((a) => (
+                <div key={a.id}
+                  className={`relative flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-2xl border bg-surface-container-lowest
+                    ${a.status === 'error' ? 'border-error/50' : 'border-outline-variant'}`}>
+                  {a.url && (a.type || '').startsWith('image/')
+                    ? <img src={a.url} alt={a.name} className="w-10 h-10 rounded-xl object-cover" />
+                    : <span className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center"><Sym name="description" className="text-primary text-[20px]" fill /></span>}
+                  <div className="min-w-0 max-w-[150px]">
+                    <div className="text-[12.5px] text-on-surface truncate">{a.name}</div>
+                    <div className={`text-[11px] flex items-center gap-1 ${a.status === 'error' ? 'text-error' : 'text-on-surface-variant'}`}>
+                      {a.status === 'uploading' && <><Sym name="progress_activity" className="text-[13px] animate-spin" />Reading…</>}
+                      {a.status === 'ready' && <><Sym name="check_circle" className="text-[13px] text-primary" />Ready</>}
+                      {a.status === 'error' && <span title={a.error}>Couldn’t read</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => dropAttachment(a.id)} title="Remove"
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high shrink-0">
+                    <Sym name="close" className="text-[15px]" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-end gap-3">
+            <input ref={fileRef} type="file" accept="application/pdf,image/png,image/jpeg,image/webp"
+              onChange={onPickFile} className="hidden" />
+            <button onClick={() => fileRef.current?.click()} title="Attach an image or document (PDF/PNG/JPG)"
+              className="w-14 h-14 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant flex items-center justify-center shadow-sm hover:bg-surface-container active:scale-95 transition shrink-0">
+              <Sym name="add" className="text-[26px]" />
+            </button>
             <div className="flex-1 relative">
-              <input value={input} onChange={setInput} onKeyDown={onKey}
+              <input value={input} onChange={setInput} onKeyDown={onKeyLocal}
                 placeholder="Describe what you need help with…"
                 className="w-full bg-surface-container-lowest border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-action px-6 py-4 shadow-xl text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50" />
             </div>
-            <button onClick={() => send()}
+            <button onClick={() => submit()}
               className="w-14 h-14 rounded-full intelligence-gradient text-white flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-transform shrink-0">
               <Sym name="send" className="text-[26px]" fill />
             </button>

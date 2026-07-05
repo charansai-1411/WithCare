@@ -38,3 +38,5 @@ class ChatRequest(BaseModel):
     coordinates: Coordinates | None = None
     language: str = "en"
     history: list[ConversationTurn] = Field(default_factory=list, description="Previous turns in this conversation")
+    attachment_document_ids: list[str] = Field(default_factory=list, description="Reader document ids attached to THIS message — the agent reads their text directly")
+    connected_connectors: list[str] = Field(default_factory=list, description="Connectors the user has authorized (e.g. 'calendar','gmail','drive','fit') — gate actions on these")

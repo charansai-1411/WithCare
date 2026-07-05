@@ -5,6 +5,7 @@ const NAV = [
   { key: 'chat',    label: 'Chat',              icon: 'chat_bubble' },
   { key: 'tasks',   label: 'Tasks & Reminders', icon: 'notifications' },
   { key: 'plans',   label: 'Workout & Diet',    icon: 'fitness_center' },
+  { key: 'health',  label: 'Health',            icon: 'monitoring', needs: 'health' },
   { key: 'reader',  label: 'Reader',            icon: 'auto_stories' },
   { key: 'profiles',label: 'Profiles',          icon: 'groups' },
   { key: 'connectors', label: 'Connectors',     icon: 'hub' },
@@ -39,10 +40,11 @@ function Avatar({ photo, initials, size = 34, ring = false }) {
 
 export default function Sidebar({
   profiles, onAddProfile, conversations, activeConvId, onConvClick, onConvDelete,
-  onNewChat, activeView, onSelectView, user, onSignOut,
+  onNewChat, activeView, onSelectView, healthConnected, user, onSignOut,
 }) {
   const [hoverConv, setHoverConv] = useState(null);
   const [hoverProf, setHoverProf] = useState(null);
+  const nav = NAV.filter(item => item.needs !== 'health' || healthConnected);
 
   return (
     <div className="h-full w-full bg-surface flex flex-col p-4 font-body-md text-on-surface">
@@ -58,7 +60,7 @@ export default function Sidebar({
 
       {/* Primary nav */}
       <nav className="space-y-0.5 m3-stagger">
-        {NAV.map(item => {
+        {nav.map(item => {
           const active = activeView === item.key;
           return (
             <button key={item.key} onClick={() => onSelectView(item.key)}

@@ -14,7 +14,7 @@ frontend and eval suite are unchanged.
 """
 import json
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import AsyncGenerator
 
 from google.genai import types
@@ -22,17 +22,24 @@ from google.genai import types
 from app.agents.action_agent import ActionAgent
 from app.agents.diet_agent import DietAgent
 from app.agents.facility_agent import FacilityAgent
+from app.agents.product_agent import ProductAgent
 from app.agents.reminder_agent import ReminderAgent
 from app.agents.scheme_agent import SchemeAgent
 from app.agents.workout_agent import WorkoutAgent
 from app.db.database import get_db
 from app.models.request_models import ChatRequest
 from app.models.response_models import SourcedStep, StreamChunk
+from app.agents.reminder_agent import _RRULE, _parse_time
+from app.db.database import get_db as _get_db
 from app.orchestrator.router import classify_intent
 from app.services.gemini_service import build_tools, generate_with_tools
 from app.services.grounding import renumber_steps
-from app.services.memory_service import get_profile_memory, resolve_recipient
+from app.services.memory_service import (
+    delete_node, find_nodes, get_profile_memory, resolve_recipient,
+    sync_profile_to_kg, write_fact,
+)
 from app.services.skills import load_skill
+from app.tools.calendar_tool import delete_calendar_event, update_calendar_event
 from app.utils.exceptions import ClinicalRequestError
 from app.utils.logger import get_logger
 
@@ -132,7 +139,11 @@ TOOL_DECLS = [
             "person": {"type": "string", "description": "Who the plan is for. Omit for the active "
                        "person, or give the NAME/relation of another care profile (e.g. 'Amma', "
                        "'mother', 'father') to make it for a family member. The user can manage plans "
-                       "for anyone in their care."}},
+                       "for anyone in their care."},
+            "adjustment": {"type": "string", "description": "OPTIONAL. If the user is asking to "
+                       "CHANGE an existing plan (e.g. 'make it only 4 days', 'add more cardio', "
+                       "'easier'), put the change here — the current plan is regenerated with it "
+                       "applied and replaces the old one. Leave empty for a brand-new plan."}},
             "required": ["goal"]},
     },
     {
@@ -149,8 +160,87 @@ TOOL_DECLS = [
                      "hasn't said it and memory doesn't have it, ASK first; never guess."},
             "person": {"type": "string", "description": "Who the plan is for. Omit for the active "
                        "person/pet, or give the NAME/relation of another care profile (e.g. 'Amma', "
-                       "'Nemo', 'father') to make it for a family member or pet."}},
+                       "'Nemo', 'father') to make it for a family member or pet."},
+            "adjustment": {"type": "string", "description": "OPTIONAL. If the user is asking to "
+                       "CHANGE an existing diet plan (e.g. 'make it vegetarian', 'no dairy', "
+                       "'add more protein', 'cheaper'), put the change here — the current plan is "
+                       "regenerated with it applied and replaces the old one. Empty for a new plan."}},
             "required": ["goal"]},
+    },
+    {
+        "name": "update_reminder",
+        "description": "Change an EXISTING reminder for a person (its time, message, or recurrence). "
+                       "Updates the saved reminder AND its Google Calendar event. Use when the user "
+                       "says things like 'change my tablet reminder to 2pm' or 'make the water "
+                       "reminder weekly'.",
+        "parameters": {"type": "object", "properties": {
+            "recipient": {"type": "string", "description": "Whose reminder: 'mother','wife', a name, or empty for the active person"},
+            "match": {"type": "string", "description": "A few words identifying WHICH reminder to change (e.g. 'tablet', 'water'). Omit to target their most recent reminder."},
+            "time": {"type": "string", "description": "New time HH:MM 24h (omit to keep)"},
+            "message": {"type": "string", "description": "New reminder text (omit to keep)"},
+            "recurrence": {"type": "string", "enum": ["none", "daily", "weekly", "monthly"], "description": "New recurrence (omit to keep)"},
+            "lead_minutes": {"type": "integer", "description": "New minutes-before (omit to keep)"}},
+            "required": []},
+    },
+    {
+        "name": "cancel_reminder",
+        "description": "Delete/stop an EXISTING reminder for a person, removing its Google Calendar "
+                       "event too. Use for 'stop/cancel/delete my X reminder'.",
+        "parameters": {"type": "object", "properties": {
+            "recipient": {"type": "string", "description": "Whose reminder: 'mother', a name, or empty for the active person"},
+            "match": {"type": "string", "description": "A few words identifying WHICH reminder (e.g. 'tablet'). Omit to target their most recent reminder."}},
+            "required": []},
+    },
+    {
+        "name": "update_profile",
+        "description": "Update a care profile's stored details (age, weight, height, gender, "
+                       "conditions, notes, email). Use when the user states a new/changed fact about "
+                       "a person, e.g. 'I now weigh 68kg', 'update mother's conditions to add "
+                       "arthritis', 'my email is x@y.com'. This keeps the profile and memory in sync.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Who to update: 'mother', a name, or empty for the active person"},
+            "age": {"type": "integer"},
+            "weight": {"type": "number", "description": "kg"},
+            "height": {"type": "number", "description": "cm"},
+            "gender": {"type": "string"},
+            "conditions": {"type": "string", "description": "Full comma-separated conditions list (replaces the stored one)"},
+            "notes": {"type": "string"},
+            "email": {"type": "string"}},
+            "required": []},
+    },
+    {
+        "name": "remember",
+        "description": "Save a durable fact WithCare should remember about a person (an allergy, a "
+                       "preference, a medication, a hospital). Use for 'remember that I'm allergic to "
+                       "penicillin', 'note that Amma prefers vegetarian food'.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Who it's about: 'mother', a name, or empty for the active person"},
+            "category": {"type": "string", "enum": ["condition", "medication", "hospital", "health_metric", "note"], "description": "Kind of fact (use 'note' for anything else, e.g. an allergy or preference)"},
+            "fact": {"type": "string", "description": "The fact to remember, short (e.g. 'Allergic to penicillin')"}},
+            "required": ["fact"]},
+    },
+    {
+        "name": "forget",
+        "description": "Remove a remembered fact about a person (correcting the memory). Use for "
+                       "'forget that I have diabetes', 'remove the penicillin allergy note'.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Who it's about: 'mother', a name, or empty for the active person"},
+            "match": {"type": "string", "description": "A few words identifying the fact to forget (e.g. 'penicillin', 'diabetes')"}},
+            "required": ["match"]},
+    },
+    {
+        "name": "find_products",
+        "description": "Price-compare a PRODUCT the user wants to buy — a health device (BP monitor, "
+                       "glucometer, thermometer, mask), a supplement, or a medicine THEY NAMED — "
+                       "across Indian shopping & pharmacy sites (Amazon, Flipkart, PharmEasy, Apollo, "
+                       "MedPlus, 1mg). Returns listings sorted cheapest→costliest with price, platform "
+                       "and a buy link. Use when the user asks where/how to buy something, the cheapest "
+                       "price, or to compare prices. Only compares what they named — never suggests or "
+                       "doses a medicine.",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "The exact product to price-compare, e.g. "
+                      "'Omron HEM-7120 BP monitor', 'Dolo 650 tablet strip', 'Accu-Chek glucometer'."}},
+            "required": ["query"]},
     },
     {
         "name": "search_documents",
@@ -175,6 +265,12 @@ _AGENT_FOR_TOOL = {
     "set_reminder": ("reminder_agent", "Setting the reminder..."),
     "plan_workout": ("workout_agent", "Designing a workout plan..."),
     "plan_diet": ("diet_agent", "Designing a diet plan..."),
+    "update_reminder": ("reminder_agent", "Updating the reminder..."),
+    "cancel_reminder": ("reminder_agent", "Removing the reminder..."),
+    "update_profile": ("orchestrator", "Updating the profile..."),
+    "remember": ("orchestrator", "Saving to memory..."),
+    "forget": ("orchestrator", "Updating memory..."),
+    "find_products": ("product_agent", "Comparing prices across stores..."),
     "search_documents": ("reader", "Searching your documents..."),
 }
 
@@ -187,6 +283,7 @@ class WithCareAgent:
         self.reminder_agent = ReminderAgent()
         self.workout_agent = WorkoutAgent()
         self.diet_agent = DietAgent()
+        self.product_agent = ProductAgent()
         self.tools = build_tools(TOOL_DECLS)
         self.skill = load_skill("orchestrator") or "You are WithCare, a healthcare navigation assistant for India."
         logger.info("WithCareAgent (agentic core) initialized")
@@ -239,6 +336,7 @@ class WithCareAgent:
             "location": request.location or "",
             "full_context": request.message,
             "memory": memory,
+            "connectors": [c.lower() for c in (request.connected_connectors or [])],
         }
 
         # ── GUARD: confirmation gate — the ONLY path that executes an irreversible action ──
@@ -271,6 +369,27 @@ class WithCareAgent:
                   f"== USER LOCATION == {loc or '(unknown — ask only if a location is truly needed)'}\n\n"
                   f"== CARE IS FOR == {base_ctx.get('for_member', 'self')}\n\n"
                   f"== MEMORY (active person) ==\n{memory or '(no stored profile details)'}")
+
+        # Files attached to THIS message — read their text directly so the agent uses them.
+        att_ids = getattr(request, "attachment_document_ids", None) or []
+        if att_ids:
+            from app.services.reader_service import documents_text
+            att = documents_text(request.user_id or "", att_ids)
+            if att["found"]:
+                system += ("\n\n== ATTACHED FILE(S) — the user attached these to THIS message. READ "
+                           "them and answer from their contents. You already have the full text "
+                           "below, so do NOT call search_documents for these and do NOT ask the user "
+                           "to retype what's in them. If they ask to find/list/read what's in the "
+                           "file, ENUMERATE the items you see (e.g. the products/medicines) before "
+                           "offering a next step like price-comparison. ==\n" + att["text"])
+            elif att["pending"]:
+                system += ("\n\n== ATTACHED FILE(S) == The user attached " + ", ".join(att["pending"]) +
+                           ", but it's still being read. Tell them it's processing and to ask again in "
+                           "a few seconds.")
+            elif att["failed"]:
+                system += ("\n\n== ATTACHED FILE(S) == The user attached " + ", ".join(att["failed"]) +
+                           ", but it couldn't be read (unreadable image or a network issue during "
+                           "processing). Ask them to re-upload it.")
         contents = []
         for h in (request.history or [])[-8:]:
             hd = h.model_dump()
@@ -353,7 +472,25 @@ class WithCareAgent:
             collected.extend(r.steps)
             return {"result": self._summarize(r.steps) or "No coverage found."}
 
+        if name == "find_products":
+            ctx = {**base_ctx, "query": args.get("query", ""),
+                   "location": base_ctx.get("location", ""),
+                   "user_message": base_ctx.get("full_context", "")}
+            r = await self.product_agent.run(ctx)
+            collected.extend(r.steps)
+            if not r.steps:
+                return {"result": "No listings found for that product."}
+            lines = [f"- {s.action}: {(s.meta or {}).get('price_display','')} on {s.source_label}"
+                     for s in r.steps]
+            return {"result": "Found these listings (cheapest first):\n" + "\n".join(lines)}
+
         if name == "set_reminder":
+            if "calendar" not in base_ctx.get("connectors", []):
+                return {"status": "not_connected", "connector": "Google Calendar",
+                        "note": "You CANNOT set this reminder — the user hasn't connected Google "
+                                "Calendar. Tell them you can't set reminders until they connect it, "
+                                "and point them to the Connectors page to connect Google Calendar in "
+                                "one click. Do NOT claim the reminder was set."}
             ctx = {**base_ctx,
                    "recipient": args.get("recipient", ""), "message": args.get("message", ""),
                    "date": args.get("date", ""), "time": args.get("time", ""),
@@ -393,10 +530,114 @@ class WithCareAgent:
                                 "offer weight loss, weight gain, muscle gain, or maintain (normal). "
                                 "Do not generate the plan yet."}
             agent = self.workout_agent if name == "plan_workout" else self.diet_agent
-            r = await agent.run({**ctx, "goal": goal, "focus": goal})
+            r = await agent.run({**ctx, "goal": goal, "focus": goal,
+                                 "adjustment": (args.get("adjustment") or "").strip()})
             collected.extend(r.steps)
             # Return the full plan so the model can present it (it's the whole point).
             return {"result": (r.steps[0].detail if r.steps else "Could not create the plan.")}
+
+        if name in ("update_reminder", "cancel_reminder"):
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("recipient"), base_ctx)
+            nodes = find_nodes(uid, "reminder", profile_id=pid, name_contains=args.get("match"))
+            if not nodes:
+                return {"status": "not_found",
+                        "note": f"No matching reminder for {pname}. Ask which reminder they mean, "
+                                "or offer to set a new one."}
+            node = nodes[0]
+            data = node.get("data") or {}
+            cal_id = data.get("calendar_id") or "primary"
+            event_id = data.get("event_id") or ""
+
+            if name == "cancel_reminder":
+                if event_id:
+                    await delete_calendar_event(cal_id, event_id)
+                delete_node(uid, node["id"])
+                return {"result": f"Cancelled {pname}'s reminder '{node['name']}' and removed its "
+                                  "calendar event."}
+
+            new_time = _parse_time(args["time"]) if args.get("time") else (data.get("time") or "09:00")
+            new_msg = (args.get("message") or node["name"]).strip()
+            new_rec = (args.get("recurrence") or data.get("recurrence") or "none").lower()
+            try:
+                new_lead = (int(float(args["lead_minutes"])) if args.get("lead_minutes") is not None
+                            else int(float(data.get("lead_minutes") or 10)))
+            except (TypeError, ValueError):
+                new_lead = int(float(data.get("lead_minutes") or 10))
+            start_iso = f"{date.today().isoformat()}T{new_time}:00"
+            end_iso = (datetime.fromisoformat(start_iso) + timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%S")
+            if event_id:
+                await update_calendar_event(cal_id, event_id, summary=f"Reminder: {new_msg}",
+                                            start_datetime=start_iso, end_datetime=end_iso,
+                                            recurrence=_RRULE.get(new_rec), reminder_minutes=[new_lead])
+            # Replace the KG node in place (its name may have changed); keep the same event.
+            delete_node(uid, node["id"])
+            write_fact(uid, pid, "reminder", new_msg,
+                       data={"time": new_time, "recurrence": new_rec, "lead_minutes": new_lead,
+                             "recipient": data.get("recipient") or pname,
+                             "event_id": event_id, "calendar_id": cal_id},
+                       predicate="has_reminder")
+            when = ("every day" if new_rec == "daily" else "every week" if new_rec == "weekly"
+                    else "one-time")
+            return {"result": f"Updated {pname}'s reminder to '{new_msg}' — {when} at {new_time}, "
+                              f"{new_lead} min before. Calendar updated."}
+
+        if name == "update_profile":
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            if not pid:
+                return {"status": "not_found",
+                        "note": f"No care profile matches '{args.get('person')}'. Ask who it's for, "
+                                "or suggest adding them under Profiles."}
+            fields = {k: args[k] for k in ("age", "weight", "height", "gender", "conditions",
+                                           "notes", "email")
+                      if args.get(k) not in (None, "")}
+            if not fields:
+                return {"status": "need_more", "note": "Ask which detail to update."}
+            db = _get_db()
+            sets = ", ".join(f"{k}=?" for k in fields)
+            db.execute(f"UPDATE profiles SET {sets}, updated_at=datetime('now') WHERE id=? AND user_id=?",
+                       (*fields.values(), pid, uid))
+            db.commit()
+            row = db.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
+            db.close()
+            if row:
+                sync_profile_to_kg(uid, dict(row))
+            changed = ", ".join(f"{k} → {v}" for k, v in fields.items())
+            return {"result": f"Updated {pname}'s profile ({changed}). Memory is in sync."}
+
+        if name == "remember":
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            fact = (args.get("fact") or "").strip()
+            if not fact:
+                return {"status": "need_more", "note": "Ask what to remember."}
+            allowed = {"condition", "medication", "hospital", "health_metric", "note"}
+            ntype = (args.get("category") or "note").lower()
+            if ntype not in allowed:
+                ntype = "note"
+            write_fact(uid, pid, ntype, fact, predicate="for_member")
+            return {"result": f"Noted for {pname}: {fact}."}
+
+        if name == "forget":
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            match = (args.get("match") or "").strip().lower()
+            found = None
+            for t in ("note", "condition", "medication", "hospital", "health_metric",
+                      "scheme", "insurance"):
+                for n in find_nodes(uid, t, profile_id=pid):
+                    if match and match in (n.get("name") or "").lower():
+                        found = n
+                        break
+                if found:
+                    break
+            if not found:
+                return {"status": "not_found",
+                        "note": f"Couldn't find a remembered fact matching '{match}' for {pname}. "
+                                "(Conditions set on the profile are changed with update_profile.)"}
+            delete_node(uid, found["id"])
+            return {"result": f"Forgotten for {pname}: {found['name']}."}
 
         if name == "search_documents":
             from app.services.reader_service import context_for_agent
@@ -410,6 +651,12 @@ class WithCareAgent:
                     "note": "Answer ONLY from these excerpts; cite the document label in parentheses."}
 
         if name == "schedule_appointment":
+            if "calendar" not in base_ctx.get("connectors", []):
+                return {"status": "not_connected", "connector": "Google Calendar",
+                        "note": "You CANNOT schedule this — the user hasn't connected Google "
+                                "Calendar. Tell them you can't book appointments until they connect "
+                                "it, and point them to the Connectors page to connect Google Calendar "
+                                "in one click. Do NOT stage or claim any booking."}
             missing = [k for k in ("procedure", "date") if not args.get(k)]
             if missing:
                 return {"status": "need_more", "missing": missing,
@@ -421,6 +668,20 @@ class WithCareAgent:
             return {"status": "confirmation_required", "summary": summary,
                     "note": "Ask the user to confirm with a clear yes/no. Do NOT say it's booked yet."}
         return {"error": f"unknown tool {name}"}
+
+    def _target_profile(self, mention: str | None, base_ctx: dict) -> tuple[str | None, str, dict | None]:
+        """Resolve a mention ('mother'/a name/empty) to (profile_id, display_name, profile).
+        Empty or the active person -> the active profile."""
+        active = (base_ctx.get("family_profile") or [{}])[0]
+        m = (mention or "").strip()
+        if (not m or m.lower() == "self"
+                or m.lower() in (str(active.get("name", "")).lower(),
+                                 str(active.get("relation", "")).lower())):
+            return base_ctx.get("active_profile_id"), active.get("name", "you") or "you", active
+        prof = resolve_recipient(m, base_ctx.get("user_id", ""))
+        if prof:
+            return prof["id"], prof["name"], prof
+        return None, m, None
 
     # ── commit an irreversible action (only from the confirmation gate) ───────────
     async def _commit(self, pending: dict) -> AsyncGenerator[StreamChunk, None]:
