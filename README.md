@@ -240,7 +240,7 @@ WithCare's interface is **heavily inspired by Google's [Material 3 (Material You
 |------|--------|
 | Frontend | React + Vite, Tailwind, **Material 3** design system, SSE streaming |
 | Backend | **FastAPI** + `sse-starlette` (Server-Sent Events) |
-| Reasoning | **Gemini 2.5 Flash** via `google-genai` — function calling, grounded Google Search, `text-embedding-004` |
+| Reasoning | **Gemini 2.5 Flash** via `vertex-ai` — function calling, grounded Google Search, `text-embedding-004` |
 | Agent core | Custom function-calling orchestrator + modular **skills** (`skills/*.md`) |
 | Google services | Calendar, Gmail, Drive, Maps, Fit (per-user **OAuth consent**) |
 | Data | SQLite (users, profiles, conversations, **knowledge graph**, documents+vectors, pending actions); **Firestore** (schemes, facilities) |
