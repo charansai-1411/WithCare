@@ -9,21 +9,32 @@
   <i>Gemini reasons · typed tools act · a knowledge graph remembers · code-level guardrails supervise.</i>
 </p>
 
-<p align="center">
-  <a href="https://withcare-501007.web.app"><img alt="Live demo" src="https://img.shields.io/badge/%E2%96%B6_Live_Demo-Open_App-1a73e8?style=for-the-badge&logoColor=white" /></a>
-  &nbsp;
-  <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img alt="Demo video" src="https://img.shields.io/badge/%E2%96%B6_Demo_Video-3--min_walkthrough-EA4335?style=for-the-badge&logo=googledrive&logoColor=white" /></a>
-  &nbsp;
-  <a href="docs/withcare.pptx"><img alt="Pitch deck" src="https://img.shields.io/badge/Pitch_Deck-.pptx-FBBC04?style=for-the-badge&logo=googleslides&logoColor=white" /></a>
-  &nbsp;
-  <a href="https://github.com/charansai-1411/WithCare"><img alt="Source on GitHub" src="https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" /></a>
-</p>
-
-<p align="center">
-  🔗 <b>Live app:</b> <a href="https://withcare-501007.web.app">withcare-501007.web.app</a>
-  &nbsp;·&nbsp; 🎬 <b>Demo video:</b> <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link">3-min walkthrough</a>
-  &nbsp;·&nbsp; 📑 <b>Deck:</b> <a href="docs/withcare.pptx">docs/withcare.pptx</a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="250" valign="top">
+      <h3>☁️ Live Demo</h3>
+      <sub>The app, live on Google&nbsp;Cloud</sub><br/><br/>
+      <a href="https://withcare-501007.web.app"><img alt="Open the app" src="https://img.shields.io/badge/Open_the_App-1A73E8?style=for-the-badge&logo=googlecloud&logoColor=white" /></a>
+    </td>
+    <td align="center" width="250" valign="top">
+      <h3>🎬 Demo Video</h3>
+      <sub>3-min walkthrough: worry&nbsp;→&nbsp;actions</sub><br/><br/>
+      <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img alt="Watch the demo video" src="https://img.shields.io/badge/Watch_the_Flow-EA4335?style=for-the-badge&logo=googledrive&logoColor=white" /></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="250" valign="top">
+      <h3>📑 Pitch Deck</h3>
+      <sub>The final deck (.pptx)</sub><br/><br/>
+      <a href="docs/withcare.pptx"><img alt="Open the pitch deck" src="https://img.shields.io/badge/Open_the_Deck-E37400?style=for-the-badge&logo=googleslides&logoColor=white" /></a>
+    </td>
+    <td align="center" width="250" valign="top">
+      <h3>💻 Source</h3>
+      <sub>Browse the code on GitHub</sub><br/><br/>
+      <a href="https://github.com/charansai-1411/WithCare"><img alt="View the source repo" src="https://img.shields.io/badge/View_Repo-181717?style=for-the-badge&logo=github&logoColor=white" /></a>
+    </td>
+  </tr>
+</table>
 
 > ⚠️ **WithCare provides navigation assistance only. It is not medical advice and never diagnoses, doses, or interprets results.**
 
