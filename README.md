@@ -246,11 +246,73 @@ WithCare's interface is **heavily inspired by Google's [Material 3 (Material You
 | Data | SQLite (users, profiles, conversations, **knowledge graph**, documents+vectors, pending actions); **Firestore** (schemes, facilities) |
 | Safety | Pre-loop clinical gate · DB-persisted confirm-before-book · step cap · arg validation · connector gating |
 
-## Repository Layout
+## Project Structure
 
 ```
-withcare-backend/     FastAPI · orchestrator + agents · tools · knowledge graph · RAG reader · skills
-withcare-frontend/    React + Vite chat UI · Material 3 · views (Chat/Reader/Health/Tasks/Plans/Connectors)
+WithCare/
+├── withcare-backend/                # FastAPI service — the multi-agent core
+│   ├── app/
+│   │   ├── main.py                   # App entry, routes, SSE /chat/stream
+│   │   ├── config.py                 # Settings (env, project, Vertex AI)
+│   │   ├── orchestrator/
+│   │   │   ├── agent.py              # Gemini function-calling loop + guardrails
+│   │   │   └── router.py             # Pre-loop clinical / ambiguity safety gate
+│   │   ├── agents/                   # Specialist agents (one job each)
+│   │   │   ├── base_agent.py         #   shared base
+│   │   │   ├── facility_agent.py     #   hospitals + gyms/parks/pools (Maps)
+│   │   │   ├── scheme_agent.py       #   government schemes
+│   │   │   ├── insurance_agent.py    #   private insurance
+│   │   │   ├── reminder_agent.py     #   per-person reminders
+│   │   │   ├── action_agent.py       #   scheduling (confirm-before-book)
+│   │   │   ├── workout_agent.py      #   tailored workout plans
+│   │   │   ├── diet_agent.py         #   tailored diet plans
+│   │   │   └── product_agent.py      #   medicine/device price-compare
+│   │   ├── tools/                    # Typed integrations the agents call
+│   │   │   ├── maps_tool.py          #   Places / Geocoding / Distance
+│   │   │   ├── calendar_tool.py      #   Google Calendar (per-user OAuth)
+│   │   │   ├── gmail_tool.py  drive_tool.py
+│   │   │   ├── firestore_tool.py     #   schemes / facilities
+│   │   │   └── bigquery_tool.py
+│   │   ├── services/                 # Cross-cutting services
+│   │   │   ├── gemini_service.py     #   Gemini (Vertex AI) client
+│   │   │   ├── memory_service.py     #   per-profile knowledge graph
+│   │   │   ├── reader_service.py     #   RAG over user documents
+│   │   │   ├── embedding_service.py  #   text-embedding-004
+│   │   │   ├── grounding.py  skills.py  auth_service.py
+│   │   ├── routes/                   # REST endpoints (auth, profiles, kg, reader, conversations)
+│   │   ├── models/                   # Pydantic request/response + care_plan
+│   │   ├── db/database.py            # SQLite schema (profiles, KG, docs, pending actions)
+│   │   ├── data/                     # Seed JSON (facilities, schemes, medicines)
+│   │   └── utils/                    # logger, exceptions
+│   ├── skills/                       # Markdown playbooks that steer the agents
+│   │   ├── orchestrator.md
+│   │   ├── workout.md  diet.md  reader.md  coverage.md
+│   ├── scripts/                      # Firestore ingest + OAuth setup
+│   ├── tests/                        # Unit + eval suites
+│   ├── Dockerfile  cloudbuild.yaml   # Cloud Run build/deploy
+│   ├── requirements.txt  .env.example
+│   └── MEMORY.md  README.md
+│
+├── withcare-frontend/               # React + Vite chat UI (Material 3)
+│   ├── src/
+│   │   ├── App.jsx  main.jsx         # App shell, routing, auth + connector state
+│   │   ├── components/
+│   │   │   ├── ChatThread.jsx  Sidebar.jsx  Tutorial.jsx
+│   │   │   ├── PlanCards.jsx  ProductCards.jsx  CarePlanCard.jsx
+│   │   │   ├── AgentFlowAnimation.jsx  MemoryManager.jsx  ...
+│   │   │   ├── views/               #   Chat, Reader, Health, Tasks, Plans, Profiles, Connectors, Settings
+│   │   │   └── ui/                  #   Buttons, Charts, Loaders, Gemini badges
+│   │   ├── hooks/useChat.js         # Chat state + SSE client
+│   │   ├── services/                # api.js, connectorsService.js, themeService.js, ...
+│   │   └── constants/agents.js      # Agent → icon-badge mapping
+│   ├── public/                      # logo, icons, favicon
+│   ├── index.html  tailwind.config.js  vite.config.js
+│   ├── firebase.json                # Firebase Hosting
+│   └── package.json  .env.example  README.md
+│
+├── docs/                            # Illustrations, screenshots, pitch deck
+├── DEPLOY.md                        # Cloud Run + Firebase deploy runbook
+└── README.md
 ```
 
 ## Setup
