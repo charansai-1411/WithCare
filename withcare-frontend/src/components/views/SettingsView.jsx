@@ -28,7 +28,7 @@ function Row({ label, sub, children }) {
   );
 }
 
-export default function SettingsView({ user, userId, location, onEditLocation, onSignOut }) {
+export default function SettingsView({ user, userId, location, onEditLocation, onSignOut, onReplayTutorial }) {
   const [showMemory, setShowMemory] = useState(false);
   return (
     <div className="flex-1 overflow-y-auto px-8 py-7 bg-background">
@@ -59,6 +59,11 @@ export default function SettingsView({ user, userId, location, onEditLocation, o
           </Row>
           <Row label="Reminder emails" sub="Send reminders to family via Gmail">
             <span className="w-11 h-6 rounded-full bg-primary flex items-center px-0.5 justify-end"><span className="w-5 h-5 rounded-full bg-white" /></span>
+          </Row>
+          <Row label="Getting-started tour" sub="Replay the “How to use WithCare” walkthrough">
+            <button onClick={onReplayTutorial} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface-variant text-[13px] hover:bg-surface-container-high">
+              <Sym name="school" className="text-[16px]" />Replay tour
+            </button>
           </Row>
         </Card>
 

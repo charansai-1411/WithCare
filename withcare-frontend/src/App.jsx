@@ -11,6 +11,7 @@ import ReaderView from './components/views/ReaderView';
 import HealthView from './components/views/HealthView';
 import ConnectorsView from './components/views/ConnectorsView';
 import SettingsView from './components/views/SettingsView';
+import Tutorial, { tutorialSeen, markTutorialSeen } from './components/Tutorial';
 import { getConnections, setConnected, requestGoogleConsent, setToken, clearToken } from './services/connectorsService';
 import { fetchAuthConfig } from './services/authService';
 import { useChat, dbMsgToUiMsg } from './hooks/useChat';
@@ -44,6 +45,38 @@ export default function App() {
   const [userLocation,    setUserLocation]    = useState({ city: '', lat: null, lng: null });
   const [connections,   setConnections]   = useState({});
   const [oauthClientId, setOauthClientId] = useState('');
+  const [showTutorial,  setShowTutorial]  = useState(false);
+
+  // Resizable sidebar — width persisted, clamped to a sensible range.
+  const SIDEBAR_MIN = 220, SIDEBAR_MAX = 440;
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = parseInt(localStorage.getItem('withcare-sidebar-width'), 10);
+    return Number.isFinite(saved) ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, saved)) : 280;
+  });
+  const resizing = useRef(false);
+
+  const startResize = useCallback((e) => {
+    e.preventDefault();
+    resizing.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    let latest = sidebarWidth;
+    const onMove = (ev) => {
+      if (!resizing.current) return;
+      latest = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, ev.clientX));
+      setSidebarWidth(latest);
+    };
+    const onUp = () => {
+      resizing.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      try { localStorage.setItem('withcare-sidebar-width', String(Math.round(latest))); } catch (err) {}
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [sidebarWidth]);
   const healthConnected = !!connections.fit;
   const connectedKeys = Object.keys(connections).filter(k => connections[k]);
 
@@ -117,7 +150,14 @@ export default function App() {
     getLocation().then(loc => { if (loc) setUserLocation(loc); });
     setConnections(getConnections(userId));
     fetchAuthConfig().then(c => setOauthClientId(c.google_client_id || ''));
+    if (!tutorialSeen(userId)) setShowTutorial(true);   // first-run walkthrough
   }, [userId]);
+
+  const closeTutorial = useCallback(() => {
+    markTutorialSeen(userId);
+    setShowTutorial(false);
+  }, [userId]);
+  const replayTutorial = useCallback(() => setShowTutorial(true), []);
 
   const openConversation = useCallback(async (convId) => {
     setActiveView('chat');
@@ -212,7 +252,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-on-surface font-body-md">
-      <aside className="w-[280px] shrink-0 border-r border-outline-variant/60 bg-surface overflow-hidden">
+      <aside className="relative shrink-0 border-r border-outline-variant/60 bg-surface overflow-hidden"
+             style={{ width: sidebarWidth }}>
         <Sidebar
           profiles={profileVMs} onAddProfile={() => setModal('new')}
           conversations={conversations} activeConvId={activeConvId}
@@ -221,6 +262,11 @@ export default function App() {
           healthConnected={healthConnected}
           user={user} onSignOut={handleSignOut}
         />
+        {/* Drag handle — resize the sidebar */}
+        <div onPointerDown={startResize} title="Drag to resize" data-tour="resize"
+          className="group absolute top-0 right-0 h-full w-1.5 cursor-col-resize z-20 flex justify-center hover:bg-primary/10">
+          <span className="w-0.5 h-full bg-transparent group-hover:bg-primary/40 transition-colors" />
+        </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -242,7 +288,11 @@ export default function App() {
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-g-green-tint text-g-green-text text-[12px] font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-g-green animate-pulse" /> Connected
             </div>
-            <button onClick={flipTheme} title="Toggle theme"
+            <button onClick={replayTutorial} title="How to use WithCare"
+              className="press w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+              <Sym name="help" className="text-[20px]" />
+            </button>
+            <button onClick={flipTheme} title="Toggle theme" data-tour="theme-toggle"
               className="press w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
               <Sym name={theme === 'dark' ? 'light_mode' : 'dark_mode'} className="text-[20px]" />
             </button>
@@ -269,7 +319,7 @@ export default function App() {
             )
           : activeView === 'connectors' ? <ConnectorsView connections={connections} clientId={oauthClientId} onConnect={connectConnector} onDisconnect={disconnectConnector} onOpenHealth={() => setActiveView('health')} />
           : activeView === 'settings' ? (
-              <SettingsView user={user} userId={userId} location={userLocation} onEditLocation={editLocation} onSignOut={handleSignOut} />
+              <SettingsView user={user} userId={userId} location={userLocation} onEditLocation={editLocation} onSignOut={handleSignOut} onReplayTutorial={replayTutorial} />
             )
           : loadingConv ? (
               <div className="flex-1 flex items-center justify-center text-on-surface-variant text-sm">Loading conversation…</div>
@@ -281,6 +331,8 @@ export default function App() {
       {modal && (
         <ProfileModal initial={modal === 'new' ? null : modal} onClose={() => setModal(null)} onSave={saveProfile} />
       )}
+
+      {showTutorial && <Tutorial onClose={closeTutorial} onNavigate={setActiveView} />}
     </div>
   );
 }

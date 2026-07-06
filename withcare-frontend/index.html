@@ -7,11 +7,11 @@
     <title>WithCare — AI Healthcare Assistant</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-    <!-- Set theme before paint to avoid a flash -->
+    <!-- Set theme before paint to avoid a flash. Light is the default for new
+         users / a fresh reopen — only go dark if the user explicitly chose it. -->
     <script>
       try {
-        var t = localStorage.getItem('withcare-theme');
-        if (t === 'dark' || (!t && window.matchMedia && matchMedia('(prefers-color-scheme:dark)').matches))
+        if (localStorage.getItem('withcare-theme') === 'dark')
           document.documentElement.classList.add('dark');
       } catch (e) {}
     </script>

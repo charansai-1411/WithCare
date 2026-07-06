@@ -59,14 +59,16 @@ export default function Sidebar({
       </div>
 
       {/* New conversation */}
-      <Button variant="tonal" full icon="add" onClick={onNewChat} className="mb-4">New conversation</Button>
+      <div data-tour="new-chat" className="mb-4">
+        <Button variant="tonal" full icon="add" onClick={onNewChat}>New conversation</Button>
+      </div>
 
       {/* Primary nav */}
       <nav className="space-y-0.5 m3-stagger">
         {nav.map(item => {
           const active = activeView === item.key;
           return (
-            <button key={item.key} onClick={() => onSelectView(item.key)}
+            <button key={item.key} onClick={() => onSelectView(item.key)} data-tour={`nav-${item.key}`}
               className={`press relative flex items-center gap-3 w-full px-4 py-2.5 rounded-full transition-all duration-300 text-[14px]
                 ${active ? 'bg-secondary-fixed text-on-secondary-fixed font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
               style={active ? { transitionTimingFunction: 'cubic-bezier(0.05,0.7,0.1,1)' } : undefined}>
@@ -83,7 +85,7 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto -mx-1 px-1 mt-3">
         {/* Care profiles quick-switch */}
         <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-3 pt-3 pb-1.5">Care profiles</p>
-        <div className="space-y-2 m3-stagger">
+        <div className="space-y-2 m3-stagger" data-tour="profiles-section">
           {profiles.map(p => (
             <div key={p.id} className="relative group"
                  onMouseEnter={() => setHoverProf(p.id)} onMouseLeave={() => setHoverProf(null)}>

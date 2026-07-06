@@ -9,6 +9,17 @@
   <i>Gemini reasons · typed tools act · a knowledge graph remembers · code-level guardrails supervise.</i>
 </p>
 
+<p align="center">
+  <a href="https://withcare-501007.web.app"><img alt="Live demo" src="https://img.shields.io/badge/%E2%96%B6_Live_Demo-withcare--501007.web.app-1a73e8?style=for-the-badge&logoColor=white" /></a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/charansai-1411/WithCare"><img alt="Source on GitHub" src="https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" /></a>
+</p>
+
+<p align="center">
+  🔗 <b>Live app:</b> <a href="https://withcare-501007.web.app">withcare-501007.web.app</a>
+  &nbsp;·&nbsp; <b>Source:</b> <a href="https://github.com/charansai-1411/WithCare">github.com/charansai-1411/WithCare</a>
+</p>
+
 > ⚠️ **WithCare provides navigation assistance only. It is not medical advice and never diagnoses, doses, or interprets results.**
 
 
@@ -42,7 +53,7 @@ A caregiver in Hyderabad opens WithCare, adds a **care profile** for their mothe
 
 WithCare's core idea: **separate reasoning from action.** Gemini decides *what* to do from natural language; typed tools with code-level guardrails decide *whether and how* it actually happens.
 
-![WithCare ecosystem — the full multi-agent architecture](docs/illustrations/withcare_ecosystem.png)
+![WithCare — system architecture](docs/illustrations/architecture.png)
 
 ### Request lifecycle (one turn)
 
@@ -193,6 +204,22 @@ Not an agent, but what makes them all coherent. Every agent writes typed facts (
 
 ---
 
+## ⋆ Skills — markdown playbooks that steer the agents
+
+The knowledge graph is one shared substrate; **skills** are the other — and the reason WithCare's behavior is tunable *without touching code*. A skill is a **markdown playbook** in [`withcare-backend/skills/`](withcare-backend/skills/) that defines *how* an agent behaves: its voice, its decision rules, its output format, and worked examples. At runtime `load_skill()` injects the relevant playbook into that agent's Gemini turn — so the model's **reasoning** is guided by an editable playbook, while its **actions** stay pinned by the typed tools and code guardrails.
+
+| Skill | What it steers |
+|-------|----------------|
+| [`orchestrator.md`](withcare-backend/skills/orchestrator.md) | The root agent — when to answer directly vs. call a tool, card-vs-prose output style, and per-domain playbooks (coverage, facilities, scheduling, reminders, plans, products, recall, editing). |
+| [`workout.md`](withcare-backend/skills/workout.md) · [`diet.md`](withcare-backend/skills/diet.md) | The rigid, card-parseable **`Day N:`** plan format the UI renders, plus age/condition/goal-aware tailoring. |
+| [`reader.md`](withcare-backend/skills/reader.md) | Answering **strictly** from the user's own uploaded documents, with citations. |
+| [`coverage.md`](withcare-backend/skills/coverage.md) | Government-scheme + private-insurance search and India-specific eligibility phrasing. |
+
+**Why this:** separating *policy* (how an agent talks and decides) from *mechanism* (the typed tools + guardrails in code) means product behavior can be reviewed, versioned, and refined in plain English — no logic redeploy to fix a phrasing or tighten an output format.
+**Why only this:** hard-coding these rules as inline Python prompt strings would bury product decisions in code and make them hard to audit; a folder of focused, version-controlled playbooks keeps each agent's behavior explicit. The `skills/` folder is packaged into the container image and loaded at startup.
+
+---
+
 ## Design — built on Google Material 3
 
 WithCare's interface is **heavily inspired by Google's [Material 3 (Material You)](https://m3.material.io/)** design language — we adopted the system end to end rather than borrowing a few pieces:
@@ -255,6 +282,12 @@ WithCare is a **hackathon prototype**, not a medical device. It is designed to *
 ## Security
 
 Secrets are **git-ignored** and never committed: `.env`, `token.json`, `client_secret*.json`, `service-account*.json`, and the SQLite `*.db`. Use the `.env.example` templates.
+
+---
+
+## The WithCare ecosystem at a glance
+
+![The WithCare ecosystem — agents, connectors, and care flows](docs/illustrations/withcare_ecosystem.png)
 
 ---
 
