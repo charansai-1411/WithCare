@@ -10,14 +10,19 @@
 </p>
 
 <p align="center">
-  <a href="https://withcare-501007.web.app"><img alt="Live demo" src="https://img.shields.io/badge/%E2%96%B6_Live_Demo-withcare--501007.web.app-1a73e8?style=for-the-badge&logoColor=white" /></a>
-  &nbsp;&nbsp;
+  <a href="https://withcare-501007.web.app"><img alt="Live demo" src="https://img.shields.io/badge/%E2%96%B6_Live_Demo-Open_App-1a73e8?style=for-the-badge&logoColor=white" /></a>
+  &nbsp;
+  <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img alt="Demo video" src="https://img.shields.io/badge/%E2%96%B6_Demo_Video-3--min_walkthrough-EA4335?style=for-the-badge&logo=googledrive&logoColor=white" /></a>
+  &nbsp;
+  <a href="docs/withcare.pptx"><img alt="Pitch deck" src="https://img.shields.io/badge/Pitch_Deck-.pptx-FBBC04?style=for-the-badge&logo=googleslides&logoColor=white" /></a>
+  &nbsp;
   <a href="https://github.com/charansai-1411/WithCare"><img alt="Source on GitHub" src="https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" /></a>
 </p>
 
 <p align="center">
   🔗 <b>Live app:</b> <a href="https://withcare-501007.web.app">withcare-501007.web.app</a>
-  &nbsp;·&nbsp; <b>Source:</b> <a href="https://github.com/charansai-1411/WithCare">github.com/charansai-1411/WithCare</a>
+  &nbsp;·&nbsp; 🎬 <b>Demo video:</b> <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link">3-min walkthrough</a>
+  &nbsp;·&nbsp; 📑 <b>Deck:</b> <a href="docs/withcare.pptx">docs/withcare.pptx</a>
 </p>
 
 > ⚠️ **WithCare provides navigation assistance only. It is not medical advice and never diagnoses, doses, or interprets results.**
@@ -36,6 +41,10 @@ In India, the hardest part of healthcare often isn't the medicine — it's the *
 - How do I keep appointments and medicine reminders in sync across the family?
 
 This burden falls hardest on non-experts caring for **others** — elderly parents, children, even pets. WithCare turns one natural-language concern into a coordinated, auditable set of actions, and shows its work.
+
+## Who it's for — and the reach
+
+WithCare's primary segment is the ~60–70 million Indian households managing chronic care for an elderly parent (173M Indians aged 60+, 2026 NCP projection; ~40% with a chronic condition, LASI). The same navigation engine — facility lookup, reminders, coverage, document Q&A — extends to any dependent in the household: the 100M+ families managing a child's health, and India's fast-growing base of pet-owning households. **One care-navigation layer, every dependent under one roof.**
 
 ## What WithCare Does
 
@@ -220,9 +229,9 @@ The knowledge graph is one shared substrate; **skills** are the other — and th
 
 ---
 
-## Design — built on Google Material 3
+## Design — inspired by Google Material 3
 
-WithCare's interface is **heavily inspired by Google's [Material 3 (Material You)](https://m3.material.io/)** design language — we adopted the system end to end rather than borrowing a few pieces:
+WithCare's interface is **inspired by Google's [Material 3 (Material You)](https://m3.material.io/)** design language:
 
 - **M3 color roles & tokens** — surfaces, primary / secondary / tertiary, containers and their `on-` colors, defined as CSS variables and mapped into Tailwind, with a full **light + dark** theme (a Google Workspace-style night palette).
 - **Google product accent colors** (blue · red · green · yellow) used *semantically* — in result cards, the Health charts, and the "N specialists consulted" agent trace.
@@ -240,7 +249,7 @@ WithCare's interface is **heavily inspired by Google's [Material 3 (Material You
 |------|--------|
 | Frontend | React + Vite, Tailwind, **Material 3** design system, SSE streaming |
 | Backend | **FastAPI** + `sse-starlette` (Server-Sent Events) |
-| Reasoning | **Gemini 2.5 Flash** via `vertex-ai` — function calling, grounded Google Search, `text-embedding-004` |
+| Reasoning | **Gemini 2.5 Flash** via **Vertex AI** — function calling, grounded Google Search, `text-embedding-004` |
 | Agent core | Custom function-calling orchestrator + modular **skills** (`skills/*.md`) |
 | Google services | Calendar, Gmail, Drive, Maps, Fit (per-user **OAuth consent**) |
 | Data | SQLite (users, profiles, conversations, **knowledge graph**, documents+vectors, pending actions); **Firestore** (schemes, facilities) |
