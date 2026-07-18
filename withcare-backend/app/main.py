@@ -25,7 +25,7 @@ app = FastAPI(
     description=(
         "Healthcare navigation multi-agent system for India. "
         "Finds government schemes, hospitals, and schedules appointments — "
-        "powered by Gemini and Google ADK."
+        "a custom Gemini function-calling orchestrator on Vertex AI."
     ),
     version="1.0.0",
     docs_url="/docs",

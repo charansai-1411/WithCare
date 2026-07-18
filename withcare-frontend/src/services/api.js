@@ -9,10 +9,20 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
  * Calls onError(message) on error events or network failures.
  */
 export async function streamChat({ message, sessionId, userId, location, coordinates, familyProfile, forMember, history, attachmentDocIds, connectors, connectorTokens }, { onChunk, onDone, onError }) {
+  // Guard against a stalled backend: if no data arrives for IDLE_MS, abort the stream so
+  // the UI can recover instead of spinning forever. The timer resets on every chunk, so a
+  // long-but-progressing response is never cut off.
+  const controller = new AbortController();
+  const IDLE_MS = 45000;
+  let idleTimer;
+  const armIdle = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => controller.abort(), IDLE_MS); };
+
   try {
+    armIdle();
     const response = await fetch(`${BASE_URL}/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         message,
         session_id: sessionId,
@@ -41,6 +51,7 @@ export async function streamChat({ message, sessionId, userId, location, coordin
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      armIdle(); // progress — reset the stall timer
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -65,6 +76,12 @@ export async function streamChat({ message, sessionId, userId, location, coordin
       }
     }
   } catch (err) {
-    onError(err.message || 'Network error — is the backend running?');
+    if (err.name === 'AbortError') {
+      onError('The assistant is taking too long to respond — please try again.');
+    } else {
+      onError(err.message || 'Network error — is the backend running?');
+    }
+  } finally {
+    clearTimeout(idleTimer);
   }
 }

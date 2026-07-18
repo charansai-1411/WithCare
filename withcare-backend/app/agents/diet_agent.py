@@ -25,6 +25,7 @@ class DietAgent(BaseAgent):
         memory = context.get("memory") or ""
         goal = context.get("goal") or context.get("focus") or "maintain (normal)"
         adjustment = (context.get("adjustment") or "").strip()
+        restrictions = (context.get("restrictions") or "").strip()
 
         # If the user is changing an existing plan, start from it and apply the change.
         current_plan = get_plan(context.get("active_profile_id"), "diet_plan") if adjustment else ""
@@ -50,6 +51,18 @@ class DietAgent(BaseAgent):
             + f"What we know about them: {memory or '(nothing extra)'}\n"
             + ("This is a pet — use species-appropriate foods.\n" if is_pet else
                "Use their age/weight/height to size portions and energy needs.\n")
+            + (
+                "\n⚠️ HARD DIETARY CONSTRAINTS — read the conditions, other details, and what we "
+                "know above for ANY food allergy, intolerance, or dietary rule (dairy-free / "
+                "lactose intolerant, nut or gluten allergy, vegetarian, vegan, eggless, "
+                "halal / jain, no beef / no pork, etc.). You MUST honour EVERY one across all "
+                "7 days — never include a food that violates it; substitute a safe alternative "
+                "instead. Also apply the diet rules implied by a condition (diabetes → low "
+                "sugar / low-GI; hypertension → low sodium; kidney disease → low potassium / "
+                "phosphorus).\n"
+            )
+            + (f"\n‼️ RESTRICTIONS the user stated for THIS plan — treat as absolute, no "
+               f"exceptions on any day: {restrictions}.\n" if restrictions else "")
             + (
                 "\nThey are ALSO following this workout plan — design the diet to FUEL it: put "
                 "more carbs/protein and calories on training days, lighter on rest days, and align "

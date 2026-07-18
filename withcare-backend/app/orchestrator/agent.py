@@ -152,7 +152,11 @@ TOOL_DECLS = [
             "adjustment": {"type": "string", "description": "OPTIONAL. If the user is asking to "
                        "CHANGE an existing plan (e.g. 'make it only 4 days', 'add more cardio', "
                        "'easier'), put the change here — the current plan is regenerated with it "
-                       "applied and replaces the old one. Leave empty for a brand-new plan."}},
+                       "applied and replaces the old one. Leave empty for a brand-new plan."},
+            "restrictions": {"type": "string", "description": "OPTIONAL hard limits to honour for "
+                       "this plan even when brand-new — injuries/conditions to work around, "
+                       "no-equipment or home-only, low-impact only, or max time per day. Pass "
+                       "whatever the user states (e.g. 'bad knee, no jumping', 'home workout only')."}},
             "required": ["goal"]},
     },
     {
@@ -173,7 +177,11 @@ TOOL_DECLS = [
             "adjustment": {"type": "string", "description": "OPTIONAL. If the user is asking to "
                        "CHANGE an existing diet plan (e.g. 'make it vegetarian', 'no dairy', "
                        "'add more protein', 'cheaper'), put the change here — the current plan is "
-                       "regenerated with it applied and replaces the old one. Empty for a new plan."}},
+                       "regenerated with it applied and replaces the old one. Empty for a new plan."},
+            "restrictions": {"type": "string", "description": "OPTIONAL dietary restrictions to "
+                       "honour for this plan even when brand-new — allergies, dislikes, vegetarian/"
+                       "vegan, dairy-free, eggless, no beef/pork, cuisine. Pass whatever the user "
+                       "states (e.g. 'dairy-free', 'no nuts'); these are HARD constraints."}},
             "required": ["goal"]},
     },
     {
@@ -589,7 +597,8 @@ class WithCareAgent:
                                 "Do not generate the plan yet."}
             agent = self.workout_agent if name == "plan_workout" else self.diet_agent
             r = await agent.run({**ctx, "goal": goal, "focus": goal,
-                                 "adjustment": (args.get("adjustment") or "").strip()})
+                                 "adjustment": (args.get("adjustment") or "").strip(),
+                                 "restrictions": (args.get("restrictions") or "").strip()})
             collected.extend(r.steps)
             # Return the full plan so the model can present it (it's the whole point).
             return {"result": (r.steps[0].detail if r.steps else "Could not create the plan.")}

@@ -176,6 +176,10 @@ def init_db():
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    # timeout = how long to wait on a locked DB before erroring (seconds). With Gemini calls
+    # now offloaded to threads there can be more concurrent access, so wait instead of failing
+    # fast with "database is locked". (WAL is intentionally NOT enabled — the Cloud Run DB lives
+    # on a GCS-FUSE mount, which doesn't support WAL's shared-memory locking.)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     return conn

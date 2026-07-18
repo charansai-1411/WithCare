@@ -23,6 +23,7 @@ class WorkoutAgent(BaseAgent):
         memory = context.get("memory") or ""
         goal = context.get("goal") or context.get("focus") or "maintain (general fitness)"
         adjustment = (context.get("adjustment") or "").strip()
+        restrictions = (context.get("restrictions") or "").strip()
         current_plan = get_plan(context.get("active_profile_id"), "workout_plan") if adjustment else ""
 
         # Full physical profile so the plan can tailor load/intensity/calorie needs.
@@ -41,6 +42,16 @@ class WorkoutAgent(BaseAgent):
             + (f"Other details: {member['notes']}.\n" if member.get("notes") else "")
             + f"What we know about them: {memory or '(nothing extra)'}\n"
             f"Use their age/weight/height/conditions to set intensity and load safely.\n"
+            + (
+                "\n⚠️ SAFETY CONSTRAINTS — read the conditions, other details, and what we know "
+                "above for ANY injury or limitation (e.g. knee/back/shoulder injury, arthritis, "
+                "pregnancy, heart condition, hypertension, recent surgery, obesity) and AVOID "
+                "exercises that are unsafe for it — substitute a safe, low-impact alternative and "
+                "keep intensity appropriate. When in doubt, err gentler and add a line to check "
+                "with a doctor before starting.\n"
+            )
+            + (f"\n‼️ LIMITS the user stated for THIS plan — honour them exactly: {restrictions}.\n"
+               if restrictions else "")
             + (
                 "\nThe user wants to CHANGE their existing workout plan. Apply this requested change "
                 f"and keep the rest of what already works:\nCHANGE REQUESTED: {adjustment}\n"
