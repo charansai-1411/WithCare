@@ -429,8 +429,15 @@ class WithCareAgent:
         final_text = ""
         try:
             for _ in range(6):
-                resp = generate_with_tools(system, contents, self.tools)
-                cand = resp.candidates[0]
+                resp = await generate_with_tools(system, contents, self.tools)
+                cand = (resp.candidates or [None])[0]
+                if cand is None or cand.content is None:
+                    # No usable candidate (safety block / empty response) — stop gracefully
+                    # instead of crashing on candidates[0].
+                    logger.warning("Gemini returned no usable candidate; ending loop")
+                    final_text = final_text or ("I couldn't complete that just now — could you "
+                                                "rephrase it or try again in a moment?")
+                    break
                 calls = [p.function_call for p in (cand.content.parts or []) if getattr(p, "function_call", None)]
                 texts = [p.text for p in (cand.content.parts or []) if getattr(p, "text", None)]
                 if texts:

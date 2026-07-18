@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 from google import genai
@@ -11,6 +12,12 @@ logger = get_logger(__name__)
 
 _client: genai.Client | None = None
 
+# Every Gemini call is bounded: a hard per-call timeout (so a stalled Vertex request can't
+# hang a chat forever) and a couple of retries on transient errors (429/503/500/deadline),
+# which Vertex returns intermittently under load.
+_CALL_TIMEOUT_S = 60
+_RETRIES = 2
+
 
 def get_gemini_client() -> genai.Client:
     global _client
@@ -19,9 +26,46 @@ def get_gemini_client() -> genai.Client:
             vertexai=True,
             project=settings.gcp_project_id,
             location=settings.gemini_location,
+            # Bound the underlying HTTP call too (ms), so a timed-out thread also unwinds.
+            http_options=types.HttpOptions(timeout=_CALL_TIMEOUT_S * 1000),
         )
         logger.info(f"Gemini client initialized (project={settings.gcp_project_id}, model={settings.gemini_model})")
     return _client
+
+
+def _is_transient(e: Exception) -> bool:
+    """True for errors worth retrying — rate limits and transient server/deadline errors."""
+    code = getattr(e, "code", None) or getattr(e, "status_code", None)
+    if code in (429, 500, 503):
+        return True
+    s = str(e).lower()
+    return any(k in s for k in (
+        "429", "resource_exhausted", "resourceexhausted", "rate limit",
+        "503", "unavailable", "500", "internal error", "deadline", "temporarily",
+    ))
+
+
+async def _acall(fn, *, timeout: float = _CALL_TIMEOUT_S, retries: int = _RETRIES):
+    """Run a blocking Gemini SDK call OFF the event loop (so it never freezes other requests),
+    bounded by `timeout`, with exponential-backoff retries on transient errors."""
+    last: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            return await asyncio.wait_for(asyncio.to_thread(fn), timeout=timeout)
+        except asyncio.TimeoutError as e:
+            last = e
+            logger.warning(f"Gemini call timed out after {timeout}s (attempt {attempt + 1}/{retries + 1})")
+        except Exception as e:
+            last = e
+            if attempt < retries and _is_transient(e):
+                delay = 0.8 * (2 ** attempt)
+                logger.warning(f"Gemini transient error (attempt {attempt + 1}), retrying in {delay:.1f}s: {e}")
+                await asyncio.sleep(delay)
+                continue
+            raise
+        if attempt < retries:  # timed out but attempts remain
+            await asyncio.sleep(0.8 * (2 ** attempt))
+    raise GeminiServiceError(f"Gemini call failed after {retries + 1} attempts: {last}")
 
 
 async def generate_structured(
@@ -33,10 +77,10 @@ async def generate_structured(
     Calls Gemini with a JSON response schema and returns a parsed dict.
     Uses response_mime_type=application/json to force structured output.
     """
-    try:
-        client = get_gemini_client()
+    client = get_gemini_client()
 
-        response = client.models.generate_content(
+    def _call():
+        return client.models.generate_content(
             model=settings.gemini_model,
             contents=user_prompt,
             config=types.GenerateContentConfig(
@@ -48,13 +92,15 @@ async def generate_structured(
             ),
         )
 
-        raw = response.text.strip()
-        result = json.loads(raw)
-        return result
-
+    try:
+        response = await _acall(_call)
+        raw = (response.text or "").strip()
+        return json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error(f"Gemini returned invalid JSON: {e}")
         raise GeminiServiceError(f"Invalid JSON from Gemini: {e}")
+    except GeminiServiceError:
+        raise
     except Exception as e:
         logger.error(f"Gemini generate_structured failed: {e}")
         raise GeminiServiceError(str(e))
@@ -66,26 +112,30 @@ async def generate_with_search(system_prompt: str, user_prompt: str) -> str:
     Note: JSON response_schema can't be combined with the search tool, so callers that
     want structured output should instruct the model to emit JSON in the prompt and parse it.
     """
+    client = get_gemini_client()
+    config = types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        temperature=0.3,
+        max_output_tokens=4096,
+        tools=[types.Tool(google_search=types.GoogleSearch())],
+    )
+    # Gemini 2.5 spends output budget on "thinking", which truncated the answer.
+    # Disable it so the full grounded response fits (ignored by models w/o thinking).
     try:
-        client = get_gemini_client()
-        config = types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=0.3,
-            max_output_tokens=4096,
-            tools=[types.Tool(google_search=types.GoogleSearch())],
+        config.thinking_config = types.ThinkingConfig(thinking_budget=0)
+    except Exception:
+        pass
+
+    def _call():
+        return client.models.generate_content(
+            model=settings.gemini_model, contents=user_prompt, config=config,
         )
-        # Gemini 2.5 spends output budget on "thinking", which truncated the answer.
-        # Disable it so the full grounded response fits (ignored by models w/o thinking).
-        try:
-            config.thinking_config = types.ThinkingConfig(thinking_budget=0)
-        except Exception:
-            pass
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=user_prompt,
-            config=config,
-        )
+
+    try:
+        response = await _acall(_call)
         return (response.text or "").strip()
+    except GeminiServiceError:
+        raise
     except Exception as e:
         logger.error(f"Gemini grounded search failed: {e}")
         raise GeminiServiceError(str(e))
@@ -157,19 +207,24 @@ def build_tools(declarations: list[dict]) -> list:
     return [types.Tool(function_declarations=fns)]
 
 
-def generate_with_tools(system_instruction: str, contents: list, tools: list, temperature: float = 0.3):
-    """One function-calling round to Gemini. Returns the raw response (caller drives the loop)."""
+async def generate_with_tools(system_instruction: str, contents: list, tools: list, temperature: float = 0.3):
+    """One function-calling round to Gemini. Returns the raw response (caller drives the loop).
+    Runs off the event loop with a timeout + transient-error retries."""
     client = get_gemini_client()
-    return client.models.generate_content(
-        model=settings.gemini_model,
-        contents=contents,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            tools=tools,
-            temperature=temperature,
-            max_output_tokens=2048,
-        ),
-    )
+
+    def _call():
+        return client.models.generate_content(
+            model=settings.gemini_model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                tools=tools,
+                temperature=temperature,
+                max_output_tokens=2048,
+            ),
+        )
+
+    return await _acall(_call)
 
 
 async def generate_text(
@@ -177,10 +232,10 @@ async def generate_text(
     user_prompt: str,
 ) -> str:
     """Simple text generation — used for explanations and summaries."""
-    try:
-        client = get_gemini_client()
+    client = get_gemini_client()
 
-        response = client.models.generate_content(
+    def _call():
+        return client.models.generate_content(
             model=settings.gemini_model,
             contents=user_prompt,
             config=types.GenerateContentConfig(
@@ -193,8 +248,12 @@ async def generate_text(
                 max_output_tokens=4096,
             ),
         )
-        return (response.text or "").strip()
 
+    try:
+        response = await _acall(_call)
+        return (response.text or "").strip()
+    except GeminiServiceError:
+        raise
     except Exception as e:
         logger.error(f"Gemini generate_text failed: {e}")
         raise GeminiServiceError(str(e))

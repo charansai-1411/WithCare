@@ -67,7 +67,7 @@ function stepsToPlan(steps) {
       });
     } else if (agent === 'action_agent') {
       if (url.includes('calendar.google.com') || url.includes('google.com/calendar')) {
-        schedule.events.push({ title: step.action, when: extractDate(step.detail), url });
+        schedule.events.push({ title: step.action, when: scheduleWhen(step.detail), url });
         schedule.confirmText = 'Added to your Google Calendar';
       } else if (url.includes('docs.google.com')) {
         schedule.driveUrl  = url;
@@ -86,13 +86,16 @@ function stepsToPlan(steps) {
   };
 }
 
-function extractDate(detail) {
-  const m = detail.match(/\d{4}-\d{2}-\d{2}/);
-  if (m) {
-    const d = new Date(m[0]);
-    return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · 10:00 AM IST';
-  }
-  return 'Scheduled — check your Google Calendar';
+// Show the REAL scheduled time. The backend detail already reads e.g.
+// "Scheduled: 07 Jul 2026, 03:00 PM – 04:00 PM IST. Also synced to: …" — so use that
+// instead of the old hardcoded "10:00 AM IST", which showed the wrong time for every booking.
+function scheduleWhen(detail) {
+  if (!detail) return 'Scheduled — check your Google Calendar';
+  const s = detail
+    .replace(/^\s*(Scheduled|Recommended):\s*/i, '')  // drop the leading label
+    .split(/\.(?:\s|$)/)[0]                            // keep the time; drop any "Also synced…" sentence
+    .trim();
+  return s || 'Scheduled — check your Google Calendar';
 }
 
 function buildAgentTrace(thinkingChunks) {

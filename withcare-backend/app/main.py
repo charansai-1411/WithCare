@@ -32,10 +32,13 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# The frontend authenticates by sending the user's token in the request BODY (not cookies),
+# so CORS credentials aren't needed — and allow_origins="*" WITH allow_credentials=True is
+# invalid per the CORS spec (browsers reject it). Keeping credentials off makes "*" valid.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
