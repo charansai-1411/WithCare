@@ -227,6 +227,45 @@ async def generate_with_tools(system_instruction: str, contents: list, tools: li
     return await _acall(_call)
 
 
+async def transcribe_audio(data: bytes, mime_type: str = "audio/webm", language_hint: str = "") -> str:
+    """Speech-to-text via Gemini (multimodal) — reuses the Vertex client, so no separate
+    Speech-to-Text API is needed. Handles English + Indian languages and code-switching."""
+    client = get_gemini_client()
+    lang = f" The speaker is most likely speaking {language_hint}." if language_hint else ""
+    instruction = (
+        "You transcribe speech to text for a healthcare-navigation assistant used in India. "
+        "Transcribe the following audio VERBATIM." + lang +
+        " The speaker may use English or an Indian language (Hindi, Telugu, Tamil, Kannada, "
+        "Malayalam, Marathi, Bengali, Gujarati, Punjabi, Urdu) and may mix languages "
+        "(code-switching) — transcribe exactly what is said, in the script of the language "
+        "spoken. Output ONLY the transcript text: no quotes, labels, timestamps, or commentary. "
+        "If there is no intelligible speech, output nothing."
+    )
+
+    def _call():
+        return client.models.generate_content(
+            model=settings.gemini_model,
+            contents=[
+                types.Part(text=instruction),
+                types.Part.from_bytes(data=data, mime_type=mime_type),
+            ],
+            config=types.GenerateContentConfig(
+                temperature=0.0,
+                max_output_tokens=1024,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+
+    try:
+        resp = await _acall(_call, timeout=45)
+        return (resp.text or "").strip()
+    except GeminiServiceError:
+        raise
+    except Exception as e:
+        logger.error(f"Gemini transcription failed: {e}")
+        raise GeminiServiceError(str(e))
+
+
 async def generate_text(
     system_prompt: str,
     user_prompt: str,

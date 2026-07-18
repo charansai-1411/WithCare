@@ -157,6 +157,7 @@ export default function TasksView({ userId, onAsk }) {
         </div>
       </div>
       <AskBar
+        userId={userId}
         placeholder="Set a reminder or schedule an appointment…"
         suggestions={[
           { icon: 'notifications_active', label: 'Remind mother at 1pm daily', q: 'Remind my mother to take her tablet at 1pm daily' },

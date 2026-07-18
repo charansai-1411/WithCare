@@ -124,6 +124,7 @@ export default function ReaderView({ userId, onAsk }) {
       </div>
       </div>
       <AskBar
+        userId={userId}
         placeholder="Ask about your documents… e.g. “What's my room-rent limit?”"
         suggestions={[
           { icon: 'policy', label: 'My room-rent limit', q: "What's my room-rent limit in my insurance policy?" },

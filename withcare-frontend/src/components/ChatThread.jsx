@@ -8,6 +8,7 @@ import M3Loader from './ui/M3Loader';
 import RichText from './ui/RichText';
 import { SUGGESTIONS } from '../constants/agents';
 import { uploadDocument } from '../services/readerApi';
+import VoiceButton from './VoiceButton';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -32,6 +33,10 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
   // Pending attachments — shown as previews, uploaded to the Reader library, and attached to the
   // next message the user sends. { id, name, type, url(objectURL for images), status, error, docId }
   const [attachments, setAttachments] = useState([]);
+  // Keep the latest input value so a voice transcript (which resolves async) appends to
+  // whatever is currently typed rather than a stale snapshot.
+  const inputRef = useRef(input);
+  inputRef.current = input;
   useEffect(() => { if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight; }, [messages]);
   const noMessages = messages.length === 0;
 
@@ -234,8 +239,12 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
             </button>
             <div className="flex-1 relative">
               <input value={input} onChange={setInput} onKeyDown={onKeyLocal}
-                placeholder="Describe what you need help with…"
-                className="w-full bg-surface-container-lowest border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-action px-6 py-4 shadow-xl text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50" />
+                placeholder="Describe what you need help with, or tap the mic to speak…"
+                className="w-full bg-surface-container-lowest border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-action pl-6 pr-28 py-4 shadow-xl text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50" />
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <VoiceButton userId={userId}
+                  onTranscript={(t) => setInput(inputRef.current ? `${inputRef.current} ${t}` : t)} />
+              </div>
             </div>
             <button onClick={() => submit()}
               className="w-14 h-14 rounded-full intelligence-gradient text-white flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-transform shrink-0">

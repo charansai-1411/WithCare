@@ -142,6 +142,7 @@ export default function PlansView({ userId, onAsk }) {
         </div>
       </div>
       <AskBar
+        userId={userId}
         placeholder="Ask for a workout or diet plan…"
         suggestions={[
           { icon: 'nutrition', label: 'Diet plan for my mother', q: 'Create a diet plan for my mother' },
