@@ -106,6 +106,30 @@ sequenceDiagram
 - **Streaming (SSE) makes the work inspectable** — the UI shows each agent as it runs, so the user (and a judge) sees *proof of work*, not a black box.
 - **Why not a single mega-prompt or a hardcoded intent switch?** A mega-prompt can't enforce irreversible-action safety and hallucinates data; a hardcoded switch can't handle the messy, multi-step, multilingual reality of caregiver questions. The function-calling loop + typed tools is the smallest design that is both flexible *and* safe.
 
+## Scaling to millions
+
+WithCare runs today on a **single, cost-efficient Cloud Run instance** (scales to zero, ~free when idle) with SQLite on a mounted GCS volume — deliberately lean for the prototype phase. Because the design is **serverless-first**, scaling out is a matter of removing *one* constraint, not re-architecting.
+
+**The only real bottleneck is state.** The service is pinned to one instance purely because SQLite is a single-writer file. Move that state to a managed backend and the same **stateless** service fans out horizontally — Cloud Run already auto-scales *and* load-balances across instances, so there are **no VMs or hand-managed load balancers to run**.
+
+```
+Global HTTPS Load Balancer + Cloud CDN + Cloud Armor (WAF)     ← custom domain, edge cache, DDoS
+        │
+        ▼
+Cloud Run  (stateless · auto-scales 1 → N behind its built-in LB)
+        ├─▶ Firestore / Cloud SQL / AlloyDB   — durable state (replaces single-writer SQLite)
+        ├─▶ Memorystore (Redis)               — cache hot profiles, memory slices & sessions
+        ├─▶ Vertex AI Vector Search           — document embeddings at scale (replaces JSON-in-SQLite)
+        ├─▶ Cloud Tasks / Pub-Sub             — async doc ingest, embeddings, calendar/email fan-out
+        └─▶ Vertex AI (Gemini)                — provisioned throughput for steady, low-latency QPS
+```
+
+- **Stateless compute** — every request already carries its own context (active profile, per-user OAuth token); once state lives in a managed DB, `--max-instances` simply goes up and Cloud Run does the rest.
+- **Serverless, not VMs** — Cloud Run auto-scales and balances load itself; no instance groups, health checks, or patching to manage.
+- **Cost stays flat per request** — Firestore reads, cached memory slices, and async embedding keep the per-request LLM cost roughly constant as traffic grows.
+
+The path is designed-in: we run lean now *on purpose*, and turn the dials when real load arrives.
+
 ---
 
 # Subagent Architectures
