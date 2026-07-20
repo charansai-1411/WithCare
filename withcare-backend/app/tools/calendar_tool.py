@@ -96,7 +96,13 @@ async def create_calendar_event(
                 overrides.append({"method": "email", "minutes": m})
             event_body["reminders"] = {"useDefault": False, "overrides": overrides}
 
-        result = service.events().insert(calendarId=calendar_id, body=event_body).execute()
+        # sendUpdates="all" makes Google actually EMAIL the attendees a calendar invite, so a
+        # family member gets it on THEIR own calendar without connecting their own account.
+        # (The default, "none", would add them silently and send nothing.)
+        result = service.events().insert(
+            calendarId=calendar_id, body=event_body,
+            sendUpdates="all" if attendee_emails else "none",
+        ).execute()
         logger.info(f"Calendar event created: {result['id']} — {summary}")
         return {"event_id": result["id"], "html_link": result["htmlLink"]}
 

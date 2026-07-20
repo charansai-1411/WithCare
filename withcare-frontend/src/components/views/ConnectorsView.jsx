@@ -28,6 +28,10 @@ export default function ConnectorsView({ connections = {}, clientId, onConnect, 
       <div className="max-w-4xl mx-auto">
         <h1 className="font-headline-lg text-[24px] text-on-surface">Connectors</h1>
         <p className="text-[14px] text-on-surface-variant mb-2">Connect your Google services so WithCare can act for you.</p>
+        <div className="flex items-start gap-2 text-[12.5px] text-on-surface-variant bg-g-green-tint/60 rounded-lg px-3 py-2 mb-4 w-fit max-w-2xl">
+          <Sym name="diversity_1" className="text-[16px] text-g-green-text mt-0.5 shrink-0" fill />
+          <span>You connect <b>your own</b> account here. When you set a reminder or book an appointment for a family member, WithCare adds it to <b>your</b> calendar and sends <b>them</b> a calendar invite and email — so they’re covered without having to sign in themselves.</span>
+        </div>
         {!clientId && (
           <div className="flex items-center gap-2 text-[12.5px] text-on-surface-variant bg-surface-container rounded-lg px-3 py-2 mb-5 w-fit">
             <Sym name="info" className="text-[16px] text-primary" /> Sign in with Google to grant real permissions (dev mode connects instantly).

@@ -94,7 +94,11 @@ class ReminderAgent(BaseAgent):
         start_iso = f"{start_date}T{time_str}:00"
         end_iso = (datetime.fromisoformat(start_iso) + timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%S")
         rrule = _RRULE.get(recurrence)
-        calendar_id = recip_email or "primary"
+        # Caregiver model: put the reminder on the CAREGIVER's own connected calendar and invite
+        # the family member as an attendee (below). Google then delivers it onto THEIR calendar +
+        # emails them — no OAuth from them, and it never 404s on an unshared calendar (writing
+        # directly to recip_email would fail unless they'd granted us write access).
+        calendar_id = "primary"
 
         when = ("every day" if recurrence == "daily" else
                 "every week" if recurrence == "weekly" else start_date)
@@ -138,11 +142,14 @@ class ReminderAgent(BaseAgent):
 
         # Be honest about what actually happened with the calendar/email.
         if event_link:
-            channel = (f" Added to {'their' if recip_email else 'the'} calendar"
-                       + (" and emailed to them." if emailed else "."))
+            if recip_email:
+                channel = (f" Added to your calendar and sent {recip_name} a calendar invite"
+                           + (" plus an email reminder." if emailed else "."))
+            else:
+                channel = " Added to your calendar."
         else:
             channel = (" I saved the reminder, but couldn't add it to the calendar"
-                       + (" or email them" if recip_email and not emailed else "")
+                       + (" or notify them" if recip_email else "")
                        + " — please check the calendar connection.")
         detail = (f"Reminder saved for {recip_name} — {when} at {time_str}, "
                   f"notifying {lead} min before.{channel}")
