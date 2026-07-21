@@ -301,7 +301,7 @@ export default function App() {
 
         {/* Content — animates on view change */}
         <div key={detailProfileId ? `pd-${detailProfileId}` : activeView} className="flex-1 flex flex-col min-h-0 m3-fade-through">
-        {activeView === 'tasks' ? <TasksView userId={userId} onAsk={askFromView} />
+        {activeView === 'tasks' ? <TasksView userId={userId} onAsk={askFromView} profiles={profiles} activeProfileId={activeProfile?.id} />
           : activeView === 'plans' ? <PlansView userId={userId} onAsk={askFromView} />
           : activeView === 'reader' ? <ReaderView userId={userId} onAsk={askFromView} />
           : activeView === 'health' ? <HealthView userId={userId} profile={activeProfile} />

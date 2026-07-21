@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { fetchKgItems, deleteKgItem } from '../../services/kgApi';
 import AskBar from '../AskBar';
+import MedicationsPanel from '../MedicationsPanel';
 import { SkeletonList } from '../ui/Skeleton';
 
 function Sym({ name, className = '', fill = false }) {
@@ -51,7 +52,7 @@ function Toggle({ on, onClick }) {
   );
 }
 
-export default function TasksView({ userId, onAsk }) {
+export default function TasksView({ userId, onAsk, profiles = [], activeProfileId }) {
   const [items, setItems] = useState(null);
   const [tab, setTab] = useState('all');
   const [person, setPerson] = useState('__all');
@@ -95,6 +96,13 @@ export default function TasksView({ userId, onAsk }) {
             <Sym name="refresh" className="text-[18px]" /> Refresh
           </button>
         </div>
+
+        {/* Medications — tracked with dose reminders + refill alerts */}
+        <MedicationsPanel userId={userId} profiles={profiles} activeProfileId={activeProfileId} />
+
+        <h2 className="font-title-lg text-[17px] text-on-surface mb-3 flex items-center gap-2">
+          <Sym name="notifications" className="text-primary text-[20px]" fill /> Reminders &amp; appointments
+        </h2>
 
         {list.length > 0 && (
           <div className="flex items-center gap-4 flex-wrap mb-5">
