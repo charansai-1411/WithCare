@@ -28,7 +28,8 @@ def write_fact(
     name: str,
     data: dict | None = None,
     predicate: str = "for_member",
-    unique: str = "name",   # "name" -> dedupe by (profile,type,name); "type" -> one per type
+    unique: str = "name",   # "name" -> dedupe by (profile,type,name); "type" -> one per type;
+                            # "never" -> always insert a new node (for time-series like vitals)
 ) -> str:
     """Upsert a KG node and link it to the person. Returns the node id."""
     if not name:
@@ -36,7 +37,9 @@ def write_fact(
     db = get_db()
     payload = json.dumps(data or {}, ensure_ascii=False)
 
-    if unique == "type":
+    if unique == "never":
+        row = None
+    elif unique == "type":
         row = db.execute(
             "SELECT id FROM kg_nodes WHERE profile_id IS ? AND type=?",
             (profile_id, node_type),

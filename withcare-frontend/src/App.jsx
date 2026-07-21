@@ -9,6 +9,7 @@ import ProfilesView from './components/views/ProfilesView';
 import ProfileDetailView from './components/views/ProfileDetailView';
 import ReaderView from './components/views/ReaderView';
 import HealthView from './components/views/HealthView';
+import EmergencyView from './components/views/EmergencyView';
 import ConnectorsView from './components/views/ConnectorsView';
 import SettingsView from './components/views/SettingsView';
 import Tutorial, { tutorialSeen, markTutorialSeen } from './components/Tutorial';
@@ -23,7 +24,7 @@ import { fetchConversations, fetchMessages, saveMessage, deleteConversation } fr
 
 const VIEW_TITLE = {
   tasks: 'Tasks & Reminders', plans: 'Workout & Diet Plans', reader: 'Reader',
-  health: 'Health', profiles: 'Care Profiles', connectors: 'Connectors', settings: 'Settings',
+  health: 'Health', emergency: 'Emergency', profiles: 'Care Profiles', connectors: 'Connectors', settings: 'Settings',
 };
 
 function Sym({ name, className = '', fill = false }) {
@@ -305,6 +306,7 @@ export default function App() {
           : activeView === 'plans' ? <PlansView userId={userId} onAsk={askFromView} />
           : activeView === 'reader' ? <ReaderView userId={userId} onAsk={askFromView} />
           : activeView === 'health' ? <HealthView userId={userId} profile={activeProfile} />
+          : activeView === 'emergency' ? <EmergencyView userId={userId} profile={activeProfile} location={userLocation} onEditProfile={(p) => setModal(p)} onAsk={askFromView} />
           : activeView === 'profiles' ? (
               detailProfileId ? (
                 <ProfileDetailView userId={userId}

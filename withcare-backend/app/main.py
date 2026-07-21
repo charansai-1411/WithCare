@@ -14,6 +14,8 @@ from app.routes.kg import router as kg_router
 from app.routes.reader import router as reader_router
 from app.routes.voice import router as voice_router
 from app.routes.medications import router as medications_router
+from app.routes.vitals import router as vitals_router
+from app.routes.emergency import router as emergency_router
 from app.models.request_models import ChatRequest
 from app.orchestrator.agent import WithCareAgent
 from app.utils.exceptions import ClinicalRequestError, WithCareError
@@ -58,6 +60,8 @@ app.include_router(kg_router)
 app.include_router(reader_router)
 app.include_router(voice_router)
 app.include_router(medications_router)
+app.include_router(vitals_router)
+app.include_router(emergency_router)
 app.include_router(conv_router)
 
 # ── Agentic core (the deterministic pipeline was removed after parity was proven) ──

@@ -24,6 +24,8 @@ export default function ProfileModal({ initial, onClose, onSave }) {
     weight: initial?.weight ?? '',
     height: initial?.height ?? '',
     conditions: initial?.conditions || '',
+    blood_group: initial?.blood_group || '',
+    allergies: initial?.allergies || '',
     notes: initial?.notes || '',
     photo: initial?.photo || '',
   });
@@ -154,6 +156,16 @@ export default function ProfileModal({ initial, onClose, onSave }) {
             <label className={labelCls}>Health conditions / problems</label>
             <textarea className={`${inputCls} min-h-[60px] resize-y`} value={f.conditions} onChange={set('conditions')}
               placeholder={isPet ? 'e.g. allergies, arthritis, vaccinations due' : 'e.g. Type 2 diabetes, hypertension, cataract'} />
+          </div>
+          <div>
+            <label className={labelCls}>Blood group <span className="font-normal text-on-surface-variant/70">— for emergencies</span></label>
+            <select className={inputCls} value={f.blood_group} onChange={set('blood_group')}>
+              {['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => <option key={g} value={g}>{g || 'Select…'}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Allergies <span className="font-normal text-on-surface-variant/70">— for emergencies</span></label>
+            <input className={inputCls} value={f.allergies} onChange={set('allergies')} placeholder="e.g. Penicillin, peanuts" />
           </div>
           <div className="col-span-2">
             <label className={labelCls}>Other important details</label>

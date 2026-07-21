@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { fetchHealthSummary } from '../../services/healthApi';
 import { BarChart, LineChart, Ring } from '../ui/Charts';
 import { SkeletonList } from '../ui/Skeleton';
+import VitalsPanel from '../VitalsPanel';
 
 function Sym({ name, className = '', fill = false, style }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`} style={style}>{name}</span>;
@@ -70,6 +71,13 @@ export default function HealthView({ userId, profile }) {
             <Sym name="refresh" className="text-[18px]" /> Refresh
           </button>
         </div>
+
+        {/* Manually-logged vitals + trends (works without any connector) */}
+        <VitalsPanel userId={userId} profile={profile} />
+
+        <h2 className="font-title-lg text-[17px] text-on-surface mb-3 flex items-center gap-2">
+          <Sym name="monitoring" className="text-primary text-[20px]" fill /> Google Fit activity
+        </h2>
 
         {!data ? <SkeletonList count={3} /> : (
           <>

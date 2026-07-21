@@ -165,6 +165,8 @@ def init_db():
         "ALTER TABLE profiles ADD COLUMN email TEXT DEFAULT ''",
         "ALTER TABLE profiles ADD COLUMN weight REAL",
         "ALTER TABLE profiles ADD COLUMN height REAL",
+        "ALTER TABLE profiles ADD COLUMN blood_group TEXT DEFAULT ''",
+        "ALTER TABLE profiles ADD COLUMN allergies TEXT DEFAULT ''",
     ]:
         try:
             c.execute(ddl)
