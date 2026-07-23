@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     gcp_project_id: str
     gemini_location: str = "us-central1"
     gemini_model: str = "gemini-2.5-flash"
+    # Live API (native audio). On Vertex this model is served from the "global" location.
+    gemini_live_model: str = "gemini-live-2.5-flash"
+    gemini_live_location: str = "global"
     firestore_database: str = "(default)"
     google_application_credentials: str = "service-account.json"
     google_calendar_mcp_url: str = ""

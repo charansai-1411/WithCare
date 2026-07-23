@@ -9,6 +9,7 @@ import RichText from './ui/RichText';
 import { SUGGESTIONS } from '../constants/agents';
 import { uploadDocument } from '../services/readerApi';
 import VoiceButton from './VoiceButton';
+import LiveVoice from './LiveVoice';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -33,6 +34,7 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
   // Pending attachments — shown as previews, uploaded to the Reader library, and attached to the
   // next message the user sends. { id, name, type, url(objectURL for images), status, error, docId }
   const [attachments, setAttachments] = useState([]);
+  const [live, setLive] = useState(false);   // live voice call overlay
   // Keep the latest input value so a voice transcript (which resolves async) appends to
   // whatever is currently typed rather than a stale snapshot.
   const inputRef = useRef(input);
@@ -237,6 +239,10 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
               className="w-14 h-14 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant flex items-center justify-center shadow-sm hover:bg-surface-container active:scale-95 transition shrink-0">
               <Sym name="add" className="text-[26px]" />
             </button>
+            <button onClick={() => setLive(true)} title="Talk live with WithCare"
+              className="w-14 h-14 rounded-full bg-g-green-tint text-g-green-text border border-g-green/30 flex items-center justify-center shadow-sm hover:brightness-105 active:scale-95 transition shrink-0">
+              <Sym name="phone_in_talk" className="text-[24px]" fill />
+            </button>
             <div className="flex-1 relative">
               <input value={input} onChange={setInput} onKeyDown={onKeyLocal}
                 placeholder="Describe what you need help with, or tap the mic to speak…"
@@ -254,6 +260,8 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
           <p className="text-center text-[11px] text-on-surface-variant mt-3">WithCare can make mistakes. Please verify important medical and financial details.</p>
         </div>
       </div>
+
+      {live && <LiveVoice onClose={() => setLive(false)} />}
     </main>
   );
 }

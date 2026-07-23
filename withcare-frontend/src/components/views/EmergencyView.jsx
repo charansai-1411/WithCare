@@ -66,17 +66,24 @@ export default function EmergencyView({ userId, profile, location, onEditProfile
           <span className="text-[12px] opacity-90">Emails {who}’s medical info to family members</span>
         </button>
 
-        {/* Result / error */}
-        {result && (
-          <div className="mt-3 rounded-card border border-g-green/40 bg-g-green-tint p-4 text-g-green-text text-[13.5px] flex items-start gap-2">
-            <Sym name="mark_email_read" className="text-[19px] mt-0.5" fill />
-            <div>
-              {result.emailed
-                ? <>Alert sent to <b>{result.notified.length}</b> {result.notified.length === 1 ? 'person' : 'people'}{result.contact_names?.length ? ` (${result.contact_names.join(', ')} + you)` : ''}.</>
-                : <>Couldn’t email anyone — connect <b>Gmail</b> on the Connectors page and make sure family profiles have email addresses.</>}
+        {/* Result / error — accurate about what actually happened */}
+        {result && (() => {
+          const ok = result.reason === 'sent';
+          const noRecip = result.reason === 'no_recipients';
+          const cls = ok ? 'border-g-green/40 bg-g-green-tint text-g-green-text' : 'border-error/30 bg-error-container/40 text-on-surface';
+          return (
+            <div className={`mt-3 rounded-card border p-4 text-[13.5px] flex items-start gap-2 ${cls}`}>
+              <Sym name={ok ? 'mark_email_read' : 'error'} className="text-[19px] mt-0.5" fill />
+              <div>
+                {ok
+                  ? <>Alert sent to <b>{result.notified.length}</b> {result.notified.length === 1 ? 'person' : 'people'}{result.contact_names?.length ? ` (${result.contact_names.join(', ')} + you)` : ''}.</>
+                  : noRecip
+                    ? <>No email addresses on file. Add an email to your family profiles under <b>Profiles</b> (and your own) so the alert can reach them.</>
+                    : <>Couldn’t send — reconnect <b>Gmail</b> on the Connectors page (your Google session may have expired).{result.error ? <span className="opacity-60"> [{result.error}]</span> : null}</>}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         {err && <div className="mt-3 text-error text-[13px]">{err}</div>}
 
         {/* Quick actions */}

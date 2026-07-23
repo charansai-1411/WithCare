@@ -281,6 +281,10 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => setActiveView('emergency')} title="Emergency & SOS"
+              className="press flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container text-error text-[12px] font-bold border border-error/30 hover:brightness-105">
+              <Sym name="emergency" className="text-[16px]" fill /> SOS
+            </button>
             <button onClick={editLocation} title="Set your location"
               className="press flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface-variant text-[12px] font-medium border border-outline-variant/50 hover:bg-surface-container-high">
               <Sym name="location_on" className="text-g-red text-[16px]" />

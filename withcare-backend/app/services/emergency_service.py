@@ -89,16 +89,27 @@ async def send_sos(user_id, profile_id, location="", coordinates=None, tokens=No
     )
     subject = f"EMERGENCY: {s['person']} needs help"
 
-    notified = []
+    notified, errors = [], []
     for to in recips:
         r = await send_email(to, subject, body, access_token=tokens.get("gmail"))
         if r.get("ok"):
             notified.append(to)
-    logger.info(f"SOS for {s['person']}: notified {len(notified)}/{len(recips)}")
+        else:
+            errors.append(r.get("error", "unknown error"))
+    logger.info(f"SOS for {s['person']}: notified {len(notified)}/{len(recips)} errors={errors}")
+
+    if not recips:
+        reason = "no_recipients"          # nobody has an email on file
+    elif notified:
+        reason = "sent"
+    else:
+        reason = "send_failed"            # recipients exist but Gmail send failed (token/scope)
     return {
         "person": s["person"],
         "recipients": recips,
         "notified": notified,
         "emailed": len(notified) > 0,
         "contact_names": [c["name"] for c in s["contacts"]],
+        "reason": reason,
+        "error": errors[0] if errors else "",
     }
