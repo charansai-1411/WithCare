@@ -127,43 +127,34 @@ export default function LiveVoice({ onClose }) {
 
   const speaking = status === 'speaking';
   const label = {
-    connecting: 'Connecting…', listening: 'Listening — go ahead', speaking: 'WithCare is speaking…',
-    error: 'Couldn’t start the call', ended: 'Call ended',
+    connecting: 'Connecting…', listening: 'Listening — just speak', speaking: 'WithCare is speaking…',
+    error: 'Couldn’t start voice chat', ended: 'Voice chat ended',
   }[status];
 
+  // A compact voice bar docked above the composer — a normal spoken conversation, not a call.
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center p-6"
-         style={{ background: 'rgb(var(--scrim) / 0.72)', backdropFilter: 'blur(6px)' }}>
-      <div className="text-center">
-        {/* Orb */}
-        <div className="relative mx-auto mb-8 flex items-center justify-center" style={{ width: 160, height: 160 }}>
-          <div className={`absolute inset-0 rounded-full intelligence-gradient ${status === 'error' ? '' : 'animate-ping'}`}
-               style={{ opacity: 0.25 }} />
-          <div className="relative rounded-full intelligence-gradient flex items-center justify-center"
-               style={{ width: speaking ? 132 : 116, height: speaking ? 132 : 116, transition: 'all .25s ease' }}>
-            <Sym name={status === 'error' ? 'error' : speaking ? 'graphic_eq' : 'mic'} className="text-white text-[46px]" fill />
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[70] w-[min(92vw,440px)]">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-3xl elev-5 p-4 m3-scale-in">
+        <div className="flex items-center gap-3">
+          <div className="relative w-11 h-11 shrink-0 flex items-center justify-center">
+            {status !== 'error' && <span className="absolute inset-0 rounded-full intelligence-gradient animate-ping" style={{ opacity: 0.25 }} />}
+            <span className="relative w-11 h-11 rounded-full intelligence-gradient flex items-center justify-center">
+              <Sym name={status === 'error' ? 'error' : speaking ? 'graphic_eq' : 'mic'} className="text-white text-[22px]" fill />
+            </span>
           </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-semibold text-on-surface">Voice chat</div>
+            <div className="text-[12.5px] text-on-surface-variant truncate">{error || label}</div>
+          </div>
+          <button onClick={onClose} title="Stop voice chat"
+            className="press w-10 h-10 rounded-full bg-surface-container text-on-surface-variant hover:bg-error-container hover:text-error flex items-center justify-center shrink-0">
+            <Sym name="close" className="text-[22px]" />
+          </button>
         </div>
-
-        <h2 className="font-headline-lg text-[22px] text-white">Talk to WithCare</h2>
-        <p className="text-[14px] text-white/80 mt-1 min-h-[20px]">{error || label}</p>
-
-        {transcript && (
-          <p className="mt-4 max-w-md mx-auto text-[13px] text-white/70 italic line-clamp-3">{transcript}</p>
-        )}
-
+        {transcript && <p className="mt-2.5 text-[12.5px] text-on-surface-variant italic line-clamp-2">{transcript}</p>}
         {status === 'error' && (
-          <p className="mt-3 max-w-sm mx-auto text-[12px] text-white/60">
-            Live voice needs the Gemini Live model enabled on your Vertex project/region, a microphone, and a supported browser (Chrome/Edge).
-          </p>
+          <p className="mt-2 text-[11.5px] text-on-surface-variant">Needs a microphone and a supported browser (Chrome/Edge).</p>
         )}
-
-        {/* End call */}
-        <button onClick={onClose}
-          className="press mt-9 w-16 h-16 rounded-full bg-error text-on-error flex items-center justify-center mx-auto shadow-lg shadow-error/40 hover:brightness-110">
-          <Sym name="call_end" className="text-[30px]" fill />
-        </button>
-        <div className="text-[12px] text-white/60 mt-2">End call</div>
       </div>
     </div>
   );

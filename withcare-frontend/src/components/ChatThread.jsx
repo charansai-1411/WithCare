@@ -239,9 +239,9 @@ export default function ChatThread({ messages, input, setInput, send, onKey, msg
               className="w-14 h-14 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant flex items-center justify-center shadow-sm hover:bg-surface-container active:scale-95 transition shrink-0">
               <Sym name="add" className="text-[26px]" />
             </button>
-            <button onClick={() => setLive(true)} title="Talk live with WithCare"
+            <button onClick={() => setLive(true)} title="Voice chat with WithCare"
               className="w-14 h-14 rounded-full bg-g-green-tint text-g-green-text border border-g-green/30 flex items-center justify-center shadow-sm hover:brightness-105 active:scale-95 transition shrink-0">
-              <Sym name="phone_in_talk" className="text-[24px]" fill />
+              <Sym name="voice_chat" className="text-[24px]" fill />
             </button>
             <div className="flex-1 relative">
               <input value={input} onChange={setInput} onKeyDown={onKeyLocal}
