@@ -429,3 +429,26 @@ Deployment (Cloud Run + Firebase Hosting) is documented in [DEPLOY.md](DEPLOY.md
 WithCare is a **hackathon prototype**, not a medical device — it navigates care, it doesn't replace clinicians. It refuses diagnosis/treatment/dosing (for people and pets), grounds external facts in real data, requires explicit confirmation before any irreversible action, and blocks itself from *claiming* actions it never performed. Real deployment would still require clinical validation, privacy/legal review, and formal medical safety review.
 
 Secrets are **git-ignored** and never committed: `.env`, `token.json`, `client_secret*.json`, `service-account*.json`, and the SQLite `*.db`. Use the `.env.example` templates.
+
+---
+
+<p align="center">
+  <img src="docs/logo.png" alt="WithCare" width="76" />
+</p>
+
+<h3 align="center">Team Transformers</h3>
+
+<p align="center">
+  Built for the <b>Google Gen AI Hackathon</b><br />
+  <sub>Top 100 · Prototype Refinement Phase</sub>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Built_with-Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" alt="Built with Gemini" />
+  <img src="https://img.shields.io/badge/Runs_on-Google_Cloud-4285F4?style=flat-square&logo=googlecloud&logoColor=white" alt="Runs on Google Cloud" />
+  <img src="https://img.shields.io/badge/Made_in-India-FF9933?style=flat-square" alt="Made in India" />
+</p>
+
+<p align="center">
+  <i>Every family deserves a personal AI care team.</i>
+</p>
