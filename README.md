@@ -23,13 +23,13 @@
 </p>
 
 <p align="center">
-  <a href="https://withcare-501007.web.app"><img src="docs/cards/card_demo.png" width="420" alt="Live demo — open the app, running on Cloud Run" /></a>
-  <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img src="docs/cards/card_video.png" width="420" alt="Demo video — watch the 3-minute flow, worry to actions" /></a>
+  <a href="https://withcare-501007.web.app"><img src="docs/cards/card_demo.png" width="300" alt="Live demo — open the app, running on Cloud Run" /></a>
+  <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img src="docs/cards/card_video.png" width="300" alt="Demo video — watch the 3-minute flow, worry to actions" /></a>
 </p>
 
 <p align="center">
-  <a href="#evaluation"><img src="docs/cards/card_eval.png" width="420" alt="Evaluation — verify the build, 149 of 152 on production" /></a>
-  <a href="docs/withcare.pptx"><img src="docs/cards/card_deck.png" width="420" alt="Submission — open the final pitch deck" /></a>
+  <a href="#evaluation"><img src="docs/cards/card_eval.png" width="300" alt="Evaluation — verify the build, 149 of 152 on production" /></a>
+  <a href="docs/withcare.pptx"><img src="docs/cards/card_deck.png" width="300" alt="Submission — open the final pitch deck" /></a>
 </p>
 
 <p align="center">
