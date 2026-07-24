@@ -1,44 +1,50 @@
+<p align="center">
+  <img src="docs/logo.png" alt="WithCare" width="128" />
+</p>
+
 <h1 align="center">WithCare</h1>
 
 <p align="center">
-  <b>Every family deserves a personal AI care team.</b><br />
-  A multi-agent AI care-navigation assistant for India — for you, your parents, your children, even your pets.
+  <b>Every family deserves a personal AI care team.</b>
+</p>
+
+<p align="center">
+  A multi-agent AI care-navigation assistant for India —<br />
+  for you, your parents, your children, even your pets.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Gemini_2.5_Flash-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini 2.5 Flash" />
+  <img src="https://img.shields.io/badge/Vertex_AI-4285F4?style=flat-square&logo=googlecloud&logoColor=white" alt="Vertex AI" />
+  <img src="https://img.shields.io/badge/Cloud_Run-4285F4?style=flat-square&logo=googlecloud&logoColor=white" alt="Cloud Run" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Material_3-757575?style=flat-square&logo=materialdesign&logoColor=white" alt="Material 3" />
+</p>
+
+<p align="center">
+  <a href="https://withcare-501007.web.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_Open_the_App-1A73E8?style=for-the-badge&logoColor=white" /></a>
+  <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img alt="Watch the 3-minute demo" src="https://img.shields.io/badge/🎬_3--min_Demo-EA4335?style=for-the-badge&logoColor=white" /></a>
+  <a href="docs/withcare.pptx"><img alt="Open the pitch deck" src="https://img.shields.io/badge/📑_Pitch_Deck-E37400?style=for-the-badge&logoColor=white" /></a>
+  <a href="#evaluation"><img alt="See the evaluation" src="https://img.shields.io/badge/✅_98%25_on_152_tests-34A853?style=for-the-badge&logoColor=white" /></a>
+</p>
+
+<p align="center">
+  <img src="docs/hero.gif" alt="WithCare in action — chat, the agent trace, coverage, facilities, documents, routines and confirm-before-book" width="840" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/agents-9-EA4335?style=flat-square" alt="9 agents" />
+  <img src="https://img.shields.io/badge/typed_tools-14-FBBC04?style=flat-square" alt="14 typed tools" />
+  <img src="https://img.shields.io/badge/languages-11-4285F4?style=flat-square" alt="11 languages" />
+  <img src="https://img.shields.io/badge/knowledge_graph-12_fact_types-34A853?style=flat-square" alt="12 KG fact types" />
+  <img src="https://img.shields.io/badge/adversarial_tests-149%2F152-34A853?style=flat-square" alt="149 of 152 adversarial tests passing" />
+  <img src="https://img.shields.io/badge/load_run-99.9%25_of_808_reqs-34A853?style=flat-square" alt="99.9% of 808 requests" />
 </p>
 
 <p align="center">
   <i>Gemini reasons · typed tools act · a knowledge graph remembers · code-level guardrails supervise.</i>
 </p>
-
-<p align="center">
-  <b>9</b> specialist agents · <b>14</b> typed tools · <b>11</b> languages · <b>152</b> adversarial tests, <b>98%</b> passing on production
-</p>
-
-<table align="center">
-  <tr>
-    <td align="center" width="250" valign="top">
-      <h3>☁️ Live Demo</h3>
-      <sub>The app, live on Google&nbsp;Cloud</sub><br/><br/>
-      <a href="https://withcare-501007.web.app"><img alt="Open the app" src="https://img.shields.io/badge/Open_the_App-1A73E8?style=for-the-badge&logo=googlecloud&logoColor=white" /></a>
-    </td>
-    <td align="center" width="250" valign="top">
-      <h3>🎬 Demo Video</h3>
-      <sub>3-min walkthrough: worry&nbsp;→&nbsp;actions</sub><br/><br/>
-      <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img alt="Watch the demo video" src="https://img.shields.io/badge/Watch_the_Flow-EA4335?style=for-the-badge&logo=googledrive&logoColor=white" /></a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="250" valign="top">
-      <h3>📑 Pitch Deck</h3>
-      <sub>The final deck (.pptx)</sub><br/><br/>
-      <a href="docs/withcare.pptx"><img alt="Open the pitch deck" src="https://img.shields.io/badge/Open_the_Deck-E37400?style=for-the-badge&logo=googleslides&logoColor=white" /></a>
-    </td>
-    <td align="center" width="250" valign="top">
-      <h3>💻 Source</h3>
-      <sub>Browse the code on GitHub</sub><br/><br/>
-      <a href="https://github.com/charansai-1411/WithCare"><img alt="View the source repo" src="https://img.shields.io/badge/View_Repo-181717?style=for-the-badge&logo=github&logoColor=white" /></a>
-    </td>
-  </tr>
-</table>
 
 > ⚠️ **WithCare provides navigation assistance only. It is not medical advice and never diagnoses, doses, or interprets results.**
 
@@ -177,6 +183,10 @@ Safety claims are only worth what you can measure, so WithCare is tested by an *
 | Voice | **4/4** | Real speech audio transcribed |
 | Connector gating | **4/4** | Refuses calendar actions without OAuth — never fakes success |
 | Multilingual (×3 runs) | **30/33** | 11 Indian languages, repeated for variance |
+
+<p align="center">
+  <img src="docs/guardrail.gif" alt="Prompt injection: before the fix the agent falsely claimed an appointment was booked; now it is blocked in code" width="840" />
+</p>
 
 **Two real defects were found this way, and fixed:**
 
