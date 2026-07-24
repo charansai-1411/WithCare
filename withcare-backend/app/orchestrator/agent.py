@@ -185,6 +185,29 @@ TOOL_DECLS = [
             "required": ["goal"]},
     },
     {
+        "name": "create_routine",
+        "description": "Create a personal CARE ROUTINE for the active person or a family member — "
+                       "skincare, hospital check-ups, sleep, hydration, eye care, physiotherapy, or "
+                       "any custom daily/weekly routine the user wants to keep. WithCare drafts the "
+                       "routine steps and saves it under Routines. For a WORKOUT or DIET plan use "
+                       "plan_workout / plan_diet instead (those are richer, day-by-day plans). "
+                       "Optionally attach a recurring reminder.",
+        "parameters": {"type": "object", "properties": {
+            "category": {"type": "string",
+                         "enum": ["skincare", "checkup", "sleep", "hydration", "eyecare", "physio", "other"],
+                         "description": "Kind of routine. Use 'other' for anything not listed. "
+                                        "(Workout and diet have their own tools — do not use this for them.)"},
+            "note": {"type": "string", "description": "OPTIONAL extra detail the user gave, e.g. "
+                     "'for oily skin', 'morning only', 'diabetic foot care', 'post-surgery knee'."},
+            "person": {"type": "string", "description": "Who it's for. Omit for the active person, or "
+                       "give the NAME/relation of another care profile (e.g. 'Amma', 'father')."},
+            "remind": {"type": "boolean", "description": "Set true ONLY if the user asked to be reminded."},
+            "time": {"type": "string", "description": "HH:MM 24h for the reminder (required if remind=true)."},
+            "recurrence": {"type": "string", "enum": ["daily", "weekly", "monthly"],
+                           "description": "How often the reminder repeats (default daily)."}},
+            "required": ["category"]},
+    },
+    {
         "name": "update_reminder",
         "description": "Change an EXISTING reminder for a person (its time, message, or recurrence). "
                        "Updates the saved reminder AND its Google Calendar event. Use when the user "
@@ -289,6 +312,7 @@ _AGENT_FOR_TOOL = {
     "set_reminder": ("reminder_agent", "Setting the reminder..."),
     "plan_workout": ("workout_agent", "Designing a workout plan..."),
     "plan_diet": ("diet_agent", "Designing a diet plan..."),
+    "create_routine": ("orchestrator", "Putting together the routine..."),
     "update_reminder": ("reminder_agent", "Updating the reminder..."),
     "cancel_reminder": ("reminder_agent", "Removing the reminder..."),
     "update_profile": ("orchestrator", "Updating the profile..."),
@@ -602,6 +626,48 @@ class WithCareAgent:
             collected.extend(r.steps)
             # Return the full plan so the model can present it (it's the whole point).
             return {"result": (r.steps[0].detail if r.steps else "Could not create the plan.")}
+
+        if name == "create_routine":
+            from app.services import routine_service as rt
+            uid = base_ctx.get("user_id", "")
+            active = (base_ctx.get("family_profile") or [{}])[0]
+            pid = base_ctx.get("active_profile_id")
+            pname = active.get("name", "you") or "you"
+            email = active.get("email", "") or ""
+            person = (args.get("person") or "").strip()
+            if person:
+                rpid, rpname, prof = self._target_profile(person, base_ctx)
+                if not rpid and not prof:
+                    return {"status": "need_more",
+                            "note": f"No care profile matches '{person}'. Ask who it's for, or "
+                                    "suggest they add that person under Profiles."}
+                pid, pname, email = rpid, rpname, (prof or {}).get("email", "") or ""
+            draft = await rt.draft_routine(uid, pid, args.get("category", "other"),
+                                           (args.get("note") or "").strip())
+            if not draft.get("content"):
+                return {"error": "Couldn't draft the routine just now.",
+                        "note": "Tell the user and offer to try again in a moment."}
+            # Optional reminder — only if asked, a time is given, and Calendar is usable.
+            remind = bool(args.get("remind"))
+            rtime = (args.get("time") or "").strip()
+            reminder_note = ""
+            if remind and not rtime:
+                remind, reminder_note = False, " (Tell me a time and I'll add a reminder too.)"
+            elif remind and self._connector_blocked(base_ctx, "calendar"):
+                remind = False
+                reminder_note = " (Couldn't set the reminder — connect Google Calendar on the Connectors page.)"
+            saved = await rt.add_routine(
+                uid, pid, pname, email, draft["name"], draft["category"], draft["content"],
+                draft["frequency"], [rtime] if remind else [], args.get("recurrence", "daily"),
+                remind, base_ctx.get("connector_tokens", {}),
+            )
+            collected.append(SourcedStep(
+                step_number=1, action=f"{draft['name']} for {pname}", detail=draft["content"],
+                source_url="", source_label="WithCare Routine", agent="orchestrator"))
+            done = f"Saved a {rt.CATEGORIES.get(draft['category'], 'care')} routine for {pname} under Routines."
+            if remind and saved.get("reminds"):
+                done += f" Reminder set for {rtime}."
+            return {"result": done + reminder_note}
 
         if name in ("update_reminder", "cancel_reminder"):
             uid = base_ctx.get("user_id", "")

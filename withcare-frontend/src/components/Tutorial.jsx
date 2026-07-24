@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 
 // A guided coach-mark tour: it spotlights each real part of the UI in place
-// (Chat, Workout & Diet, Connectors…), moving from one to the next and
+// (Chat, Routines, Connectors…), moving from one to the next and
 // explaining it right there. Shown once per user; re-openable from the header “?”.
 const KEY = (userId) => `withcare-tutorial-seen-${userId || 'guest'}`;
 
@@ -28,9 +28,9 @@ const STEPS = [
   { sel: '[data-tour="nav-tasks"]', view: 'tasks', place: 'right', icon: 'notifications',
     title: 'Tasks & Reminders',
     body: 'Every reminder and appointment you set shows up here, so nothing slips through.' },
-  { sel: '[data-tour="nav-plans"]', view: 'plans', place: 'right', icon: 'fitness_center',
-    title: 'Workout & Diet',
-    body: 'Ask for a plan and it’s built for the active person’s age and conditions — shown as day-by-day cards you can tweak by chatting.' },
+  { sel: '[data-tour="nav-routines"]', view: 'routines', place: 'right', icon: 'event_repeat',
+    title: 'Routines',
+    body: 'Keep daily care routines — skincare, check-ups, workouts, diet and more — for each person. Add your own or let Gemini draft them, with an optional reminder.' },
   { sel: '[data-tour="nav-reader"]', view: 'reader', place: 'right', icon: 'auto_stories',
     title: 'Reader',
     body: 'Upload an insurance policy, lab report or prescription and get clear, cited answers from your own documents.' },

@@ -4,7 +4,7 @@ import ChatThread from './components/ChatThread';
 import LoginScreen from './components/LoginScreen';
 import ProfileModal from './components/ProfileModal';
 import TasksView from './components/views/TasksView';
-import PlansView from './components/views/PlansView';
+import RoutinesView from './components/views/RoutinesView';
 import ProfilesView from './components/views/ProfilesView';
 import ProfileDetailView from './components/views/ProfileDetailView';
 import ReaderView from './components/views/ReaderView';
@@ -23,7 +23,7 @@ import { fetchProfiles, createProfile, updateProfile, deleteProfile } from './se
 import { fetchConversations, fetchMessages, saveMessage, deleteConversation } from './services/conversationApi';
 
 const VIEW_TITLE = {
-  tasks: 'Tasks & Reminders', plans: 'Workout & Diet Plans', reader: 'Reader',
+  tasks: 'Tasks & Reminders', routines: 'Routines', reader: 'Reader',
   health: 'Health', emergency: 'Emergency', profiles: 'Care Profiles', connectors: 'Connectors', settings: 'Settings',
 };
 
@@ -307,7 +307,7 @@ export default function App() {
         {/* Content — animates on view change */}
         <div key={detailProfileId ? `pd-${detailProfileId}` : activeView} className="flex-1 flex flex-col min-h-0 m3-fade-through">
         {activeView === 'tasks' ? <TasksView userId={userId} onAsk={askFromView} profiles={profiles} activeProfileId={activeProfile?.id} />
-          : activeView === 'plans' ? <PlansView userId={userId} onAsk={askFromView} />
+          : activeView === 'routines' ? <RoutinesView userId={userId} onAsk={askFromView} profiles={profiles} activeProfileId={activeProfile?.id} />
           : activeView === 'reader' ? <ReaderView userId={userId} onAsk={askFromView} />
           : activeView === 'health' ? <HealthView userId={userId} profile={activeProfile} />
           : activeView === 'emergency' ? <EmergencyView userId={userId} profile={activeProfile} location={userLocation} onEditProfile={(p) => setModal(p)} onAsk={askFromView} />

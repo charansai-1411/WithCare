@@ -4,7 +4,7 @@ import Button from './ui/Button';
 const NAV = [
   { key: 'chat',    label: 'Chat',              icon: 'chat_bubble' },
   { key: 'tasks',   label: 'Tasks & Reminders', icon: 'notifications' },
-  { key: 'plans',   label: 'Workout & Diet',    icon: 'fitness_center' },
+  { key: 'routines', label: 'Routines',          icon: 'event_repeat' },
   { key: 'health',  label: 'Health',            icon: 'monitoring' },
   { key: 'emergency', label: 'Emergency',       icon: 'emergency' },
   { key: 'reader',  label: 'Reader',            icon: 'auto_stories' },

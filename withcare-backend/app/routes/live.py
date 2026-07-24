@@ -42,11 +42,13 @@ def _system_prompt() -> str:
     base = load_skill("orchestrator") or "You are WithCare, a warm healthcare-navigation assistant for India."
     return (
         base
-        + "\n\n== YOU ARE ON A LIVE VOICE CALL =="
-        "\n- Speak warmly and CONVERSATIONALLY, in 1–2 short sentences at a time, like a friendly phone call."
-        "\n- You cannot show cards or links on a call, so summarise verbally and offer to open the app for details."
-        "\n- Never diagnose, prescribe, or interpret results — gently guide to a professional and help navigate care."
-        "\n- If the person speaks an Indian language, reply in that language."
+        + "\n\n== YOU ARE IN A LIVE VOICE CONVERSATION =="
+        "\n- Speak warmly and CONVERSATIONALLY, in 1-2 short sentences at a time."
+        "\n- You cannot show cards or links here, so summarise verbally and offer to open the app for details."
+        "\n- Never diagnose, prescribe, or interpret results - gently guide to a professional and help navigate care."
+        "\n- LANGUAGE: Reply in English by default. Only switch to another language if the person clearly speaks a"
+        " full sentence in that language; do NOT switch based on a single word like a greeting. Match the person's"
+        " language once they have clearly established it."
     )
 
 
@@ -83,16 +85,25 @@ async def live_ws(ws: WebSocket):
                             raise WebSocketDisconnect()
 
             async def gemini_to_browser():
-                async for response in session.receive():
-                    if response.data:
-                        await ws.send_bytes(response.data)  # 24 kHz PCM reply audio
-                    if getattr(response, "text", None):
-                        await ws.send_text(json.dumps({"type": "text", "text": response.text}))
-                    sc = getattr(response, "server_content", None)
-                    if sc and getattr(sc, "interrupted", None):
-                        await ws.send_text(json.dumps({"type": "interrupted"}))
-                    if sc and getattr(sc, "turn_complete", None):
-                        await ws.send_text(json.dumps({"type": "turn_complete"}))
+                # session.receive() yields the messages for ONE turn and then ends, so it must be
+                # re-entered for each subsequent turn. Without this loop, the assistant replies once
+                # and then goes silent forever.
+                while True:
+                    got_turn = False
+                    async for response in session.receive():
+                        got_turn = True
+                        if response.data:
+                            await ws.send_bytes(response.data)  # 24 kHz PCM reply audio
+                        if getattr(response, "text", None):
+                            await ws.send_text(json.dumps({"type": "text", "text": response.text}))
+                        sc = getattr(response, "server_content", None)
+                        if sc and getattr(sc, "interrupted", None):
+                            await ws.send_text(json.dumps({"type": "interrupted"}))
+                        if sc and getattr(sc, "turn_complete", None):
+                            await ws.send_text(json.dumps({"type": "turn_complete"}))
+                    # If the stream yields nothing (session closing), stop rather than busy-loop.
+                    if not got_turn:
+                        break
 
             await asyncio.gather(browser_to_gemini(), gemini_to_browser())
 
