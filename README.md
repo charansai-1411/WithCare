@@ -33,6 +33,10 @@
 </p>
 
 <p align="center">
+  <img src="docs/hero.png" alt="From one worry to coordinated care — WithCare turns a caregiver's plain-language worry into grounded, auditable care actions" width="900" />
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/agents-9-EA4335?style=flat-square" alt="9 agents" />
   <img src="https://img.shields.io/badge/typed_tools-14-FBBC04?style=flat-square" alt="14 typed tools" />
   <img src="https://img.shields.io/badge/languages-11-4285F4?style=flat-square" alt="11 languages" />
