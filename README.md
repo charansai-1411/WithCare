@@ -33,10 +33,6 @@
 </p>
 
 <p align="center">
-  <img src="docs/hero.gif" alt="WithCare in action — chat, the agent trace, coverage, facilities, documents, routines and confirm-before-book" width="840" />
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/agents-9-EA4335?style=flat-square" alt="9 agents" />
   <img src="https://img.shields.io/badge/typed_tools-14-FBBC04?style=flat-square" alt="14 typed tools" />
   <img src="https://img.shields.io/badge/languages-11-4285F4?style=flat-square" alt="11 languages" />
@@ -186,10 +182,6 @@ Safety claims are only worth what you can measure, so WithCare is tested by an *
 | Voice | **4/4** | Real speech audio transcribed |
 | Connector gating | **4/4** | Refuses calendar actions without OAuth — never fakes success |
 | Multilingual (×3 runs) | **30/33** | 11 Indian languages, repeated for variance |
-
-<p align="center">
-  <img src="docs/guardrail.gif" alt="Prompt injection: before the fix the agent falsely claimed an appointment was booked; now it is blocked in code" width="840" />
-</p>
 
 **Two real defects were found this way, and fixed:**
 
