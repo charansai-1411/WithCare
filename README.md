@@ -75,14 +75,6 @@ Beyond chat it runs the day-to-day of caregiving: **routines** (workout, diet, s
 
 ---
 
-## The app
-
-Eleven real screens from the live app — chat, the agent trace, the safety gate, facilities, coverage, document Q&A, reminders, confirm-before-book, routines, price comparison and memory.
-
-![WithCare — the app: eleven screens from the live product](docs/screenshots/app_gallery.png)
-
----
-
 # Full System Architecture
 
 The core idea: **separate reasoning from action.** Gemini decides *what* to do from natural language; typed tools with code-level guardrails decide *whether and how* it actually happens.
@@ -153,6 +145,14 @@ Cloud Run  (stateless · auto-scales 1 → N behind its built-in LB)
 ```
 
 Every request already carries its own context (active profile, per-user OAuth token), so once state moves to a managed DB, `--max-instances` simply goes up. We run lean now *on purpose*, and turn the dials when real load arrives.
+
+---
+
+# The app
+
+Eleven real screens from the live app — chat, the agent trace, the safety gate, facilities, coverage, document Q&A, reminders, confirm-before-book, routines, price comparison and memory.
+
+![WithCare — the app: eleven screens from the live product](docs/screenshots/app_gallery.png)
 
 ---
 
@@ -345,42 +345,54 @@ The interface follows **[Material 3 (Material You)](https://m3.material.io/)**: 
 
 | Layer | Choice |
 |------|--------|
-| Frontend | React + Vite, Tailwind, **Material 3** design system, SSE streaming |
-| Backend | **FastAPI** + `sse-starlette` (Server-Sent Events) |
-| Reasoning | **Gemini 2.5 Flash** via **Vertex AI** — function calling, grounded Google Search, `text-embedding-004` |
-| Voice | Gemini multimodal transcription · **Gemini Live** (native audio) over a WebSocket bridge |
-| Agent core | Custom function-calling orchestrator + modular **skills** (`skills/*.md`) |
-| Google services | Calendar, Gmail, Drive, Maps, Fit (per-user **OAuth consent**) |
-| Data | SQLite (users, profiles, conversations, **knowledge graph**, documents+vectors, pending actions); **Firestore** (schemes, facilities) |
-| Safety | Pre-loop clinical gate · confirm-before-book · false-completion guard · grounding rule · step cap · connector gating |
+| **Reasoning** | **Gemini 2.5 Flash** on **Vertex AI** — function calling (**14 typed tools**), multimodal vision + audio, grounded Google Search |
+| **Realtime voice** | **Gemini Live** (`gemini-live-2.5-flash`, native audio, barge-in) over a FastAPI **WebSocket** bridge · multimodal STT for voice input |
+| **Retrieval** | `text-embedding-004` + cosine top-k over the user's own documents; Gemini multimodal **OCR** ingests PDFs *and* phone photos |
+| **Agent core** | Custom function-calling orchestrator · **9 agents** · **5 markdown skill playbooks** (`skills/*.md`) |
+| **Guardrails** | Pre-loop clinical gate · DB-persisted confirm-before-book · **false-completion guard** · grounding rule · step cap · arg validation · connector gating |
+| **Backend** | **FastAPI** + `sse-starlette` (SSE streaming) · **11 route modules** · **11 services** |
+| **Frontend** | **React + Vite** · Tailwind + **Material 3** tokens (light/dark) · **37 components** · SSE client |
+| **Data** | **SQLite** — users, profiles, conversations, **12-type knowledge graph**, documents + vectors, pending actions · **Firestore** — schemes, facilities |
+| **Google services** | Calendar · Gmail · Drive · Maps (Places/Geocoding/Distance) · Fit — all under **per-user OAuth consent** |
+| **Infra** | **Cloud Run** (container, GCS-mounted DB volume) · **Firebase Hosting** · **Secret Manager** · Cloud Build |
+| **Verification** | 152-test adversarial suite + 808-request load run, both against **production** |
 
 ## Project Structure
 
 ```
 WithCare/
-├── withcare-backend/            # FastAPI service — the multi-agent core
-│   └── app/
-│       ├── main.py  config.py   # entry + SSE /chat/stream · settings
-│       ├── orchestrator/        # agent.py (Gemini loop + guardrails) · router.py (safety gate)
-│       ├── agents/              # facility · scheme · insurance · reminder · action
-│       │                        #   · workout · diet · product
-│       ├── tools/               # maps · calendar · gmail · drive · firestore · bigquery
-│       ├── services/            # gemini · memory (KG) · reader (RAG) · embedding · skills
-│       │                        #   · routine · medication · vitals · emergency
-│       ├── routes/              # auth · profiles · kg · reader · conversations · voice
-│       │                        #   · routines · medications · vitals · emergency · live (WS)
-│       └── models/  db/  data/  utils/
-│   # + skills/ (playbooks) · scripts/ · tests/ · Dockerfile · cloudbuild.yaml
+├── withcare-backend/                  # FastAPI service — the multi-agent core
+│   ├── app/
+│   │   ├── main.py  config.py         # entry + SSE /chat/stream · settings
+│   │   ├── orchestrator/              # agent.py — Gemini loop, 14 typed tools, guardrails
+│   │   │                              # router.py — pre-loop clinical / ambiguity gate
+│   │   ├── agents/                    # 8 specialists: facility · scheme · insurance
+│   │   │                              # reminder · action · workout · diet · product
+│   │   ├── tools/                     # maps · calendar · gmail · drive · firestore · bigquery
+│   │   ├── services/                  # gemini · memory (KG) · reader (RAG) · embedding
+│   │   │                              # routine · medication · vitals · emergency
+│   │   │                              # skills · grounding · auth
+│   │   ├── routes/                    # auth · profiles · kg · conversations · reader
+│   │   │                              # routines · medications · vitals · emergency
+│   │   │                              # voice (STT) · live (Gemini Live WebSocket)
+│   │   └── models/  db/  data/  utils/
+│   ├── skills/                        # orchestrator · workout · diet · reader · coverage (.md)
+│   ├── scripts/  tests/               # Firestore ingest · OAuth setup · eval suites
+│   └── Dockerfile  cloudbuild.yaml    # Cloud Run build/deploy
 │
-├── withcare-frontend/           # React + Vite chat UI (Material 3)
+├── withcare-frontend/                 # React + Vite UI (Material 3) — 37 components
 │   └── src/
-│       ├── App.jsx              # shell, routing, auth + connector state
-│       ├── components/          # ChatThread · Sidebar · Tutorial · PlanCards · LiveVoice
-│       │   └── views/           #   Chat · Reader · Health · Tasks · Routines
-│       │                        #   · Emergency · Profiles · Connectors · Settings
-│       └── hooks/  services/  ui/
+│       ├── App.jsx                    # shell, routing, auth + connector state
+│       ├── components/
+│       │   ├── ChatThread · Sidebar · Tutorial · PlanCards · ProductCards
+│       │   ├── LiveVoice · VoiceButton · MedicationsPanel · VitalsPanel
+│       │   └── views/                 # Routines · Tasks · Health · Emergency
+│       │                              # Reader · Profiles · Connectors · Settings
+│       ├── hooks/                     # useChat (SSE) · useVoiceInput
+│       └── services/                  # api · routineApi · medicationApi · vitalsApi
+│                                      # emergencyApi · readerApi · voiceApi · connectors
 │
-├── docs/          # Illustrations, screenshots, pitch deck
+├── docs/          # Illustrations, app gallery, pitch deck
 ├── DEPLOY.md      # Cloud Run + Firebase deploy runbook
 └── README.md
 ```
@@ -412,11 +424,3 @@ Deployment (Cloud Run + Firebase Hosting) is documented in [DEPLOY.md](DEPLOY.md
 WithCare is a **hackathon prototype**, not a medical device — it navigates care, it doesn't replace clinicians. It refuses diagnosis/treatment/dosing (for people and pets), grounds external facts in real data, requires explicit confirmation before any irreversible action, and blocks itself from *claiming* actions it never performed. Real deployment would still require clinical validation, privacy/legal review, and formal medical safety review.
 
 Secrets are **git-ignored** and never committed: `.env`, `token.json`, `client_secret*.json`, `service-account*.json`, and the SQLite `*.db`. Use the `.env.example` templates.
-
----
-
-## The WithCare ecosystem at a glance
-
-![The WithCare ecosystem — agents, connectors, and care flows](docs/illustrations/withcare_ecosystem.png)
-
----
