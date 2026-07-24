@@ -425,10 +425,32 @@ class WithCareAgent:
         loc = base_ctx.get("location") or (
             "(GPS coordinates available — 'near me' is resolvable, pass the known city or 'near me')"
             if base_ctx.get("coordinates") else "")
+        # Most Indian users type their language in Latin letters ("meri maa ko sugar hai"), so
+        # match the script they used too — replying in English to a Hindi question reads as a
+        # failure to understand them.
+        pref = (getattr(request, "language", "") or "").strip()
+        language_rule = (
+            "BEFORE you write anything, identify the language of the user's message. Write your "
+            "ENTIRE reply in that same language, in the same script they used.\n"
+            "- Indian languages typed in Latin letters (romanised) are NOT English. "
+            "'meri maa ko sugar hai' is Hindi -> answer in romanised Hindi. "
+            "'amar mayer diabetes ache' is Bengali -> answer in romanised Bengali. "
+            "'ente ammaykku prameham undu' is Malayalam -> answer in romanised Malayalam.\n"
+            "- Native script in (Devanagari, Tamil, Telugu, Bengali, Gurmukhi, Gujarati, Kannada, "
+            "Malayalam, Urdu) -> reply in that same script.\n"
+            "- English in -> English out. That is the ONLY case where you answer in English.\n"
+            "- Keep proper nouns as-is (PM-JAY, Aarogyasri, hospital and medicine names).\n"
+            "- Applies to EVERY reply, including short clarifying questions.\n"
+            "- Answering an Indian-language question in English is a FAILURE, even if the user "
+            "seems to understand English."
+            + (f"\n- Saved language preference: '{pref}' - use only to break a tie when the "
+               "message is too short to tell." if pref else "")
+        )
         system = (f"{self.skill}\n\n== TODAY == {date.today().isoformat()}\n\n"
                   f"== USER LOCATION == {loc or '(unknown — ask only if a location is truly needed)'}\n\n"
                   f"== CARE IS FOR == {base_ctx.get('for_member', 'self')}\n\n"
-                  f"== MEMORY (active person) ==\n{memory or '(no stored profile details)'}")
+                  f"== MEMORY (active person) ==\n{memory or '(no stored profile details)'}\n\n"
+                  f"== LANGUAGE (applies to your final answer) ==\n{language_rule}")
 
         # Files attached to THIS message — read their text directly so the agent uses them.
         att_ids = getattr(request, "attachment_document_ids", None) or []
