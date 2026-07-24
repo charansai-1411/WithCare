@@ -228,7 +228,7 @@ Each specialist does one thing well, returns typed `SourcedStep`s (so the fronte
 
 The brain of the loop. Loads the active person's memory, exposes the toolbox to Gemini, runs a bounded function-calling loop, and enforces the hard guardrails.
 
-![Orchestrator — the root agent's function-calling loop and guardrails](docs/illustrations/orchestrator.png)
+<p align="center"><img src="docs/illustrations/orchestrator.png" alt="Orchestrator — the root agent's function-calling loop and guardrails" width="620" /></p>
 
 **Why:** a function-calling loop lets Gemini compose multiple tools for one request ("find a hospital *and* book it") using injected memory to avoid re-asking — while the loop stays **bounded**, tools **validated**, and irreversible/clinical paths intercepted *outside* the model.
 
@@ -236,7 +236,7 @@ The brain of the loop. Loads the active person's memory, exposes the toolbox to 
 
 Runs **before** the loop. A keyword fast-path catches obvious clinical asks instantly; otherwise Gemini classifies `is_clinical` / `is_ambiguous`.
 
-![Intake Router — the clinical/ambiguity safety gate](docs/illustrations/intake_router.png)
+<p align="center"><img src="docs/illustrations/intake_router.png" alt="Intake Router — the clinical/ambiguity safety gate" width="620" /></p>
 
 **Why:** the cheapest, most reliable safety is deciding *before* spending tokens or touching tools. Asking the main model to self-police mid-conversation is unreliable and hard to audit; a dedicated, logged gate is deterministic and testable.
 
@@ -244,7 +244,7 @@ Runs **before** the loop. A keyword fast-path catches obvious clinical asks inst
 
 Curated India facilities (Firestore) + Gemini ranking + **live Maps** enrichment (real distance, rating, link), reconciled through one reverse-geocode so coordinates and city never disagree; sorted nearest-first.
 
-![Facility Agent — find the right place, nearby and real](docs/illustrations/facility_agent.png)
+<p align="center"><img src="docs/illustrations/facility_agent.png" alt="Facility Agent — find the right place, nearby and real" width="620" /></p>
 
 **Why:** a pure-LLM hospital list hallucinates addresses and distances. Firestore gives curated, scheme-aware options; Maps gives live proximity and a clickable pin — results a caregiver can actually call and drive to.
 
@@ -252,7 +252,7 @@ Curated India facilities (Firestore) + Gemini ranking + **live Maps** enrichment
 
 Government schemes come from curated **Firestore**; private insurance comes **live from Google Search grounding**, parsed through a **self-correcting JSON loop** so a bad LLM format can never break the UI.
 
-![Coverage Agent — government schemes + private insurance](docs/illustrations/coverage_agent.png)
+<p align="center"><img src="docs/illustrations/coverage_agent.png" alt="Coverage Agent — government schemes + private insurance" width="620" /></p>
 
 **Why:** government schemes are stable and belong in a curated store; private plans change constantly and must be fetched live. A static list goes stale; ungrounded output invents plans and URLs.
 
@@ -260,7 +260,7 @@ Government schemes come from curated **Firestore**; private insurance comes **li
 
 No LLM inside — the orchestrator already extracted the args. It resolves the recipient, creates a recurring **Calendar** event (RRULE + notify-N-min-before), best-effort **Gmail**, and records the reminder in memory. Date parsing never raises.
 
-![Reminder Agent — deterministic per-person reminders](docs/illustrations/reminder_agent.png)
+<p align="center"><img src="docs/illustrations/reminder_agent.png" alt="Reminder Agent — deterministic per-person reminders" width="620" /></p>
 
 **Why:** once intent is structured, execution should be **deterministic**. Letting the LLM hand-format calendar payloads risks malformed events and silent failures.
 
@@ -268,7 +268,7 @@ No LLM inside — the orchestrator already extracted the args. It resolves the r
 
 Booking is **irreversible**, so the orchestrator can only **stage** it (persisted in `pending_actions`); the user's explicit "yes" is the *only* path that commits. On commit: Calendar event, optional family-calendar sync (with consent), an optional Drive care-plan doc, and a memory write.
 
-![Scheduling Agent — confirm-before-book flow](docs/illustrations/scheduling_agent.png)
+<p align="center"><img src="docs/illustrations/scheduling_agent.png" alt="Scheduling Agent — confirm-before-book flow" width="620" /></p>
 
 **Why:** a hard, DB-persisted **stage → confirm → commit** flow means an irreversible action can only happen on an explicit human "yes" — the model cannot self-authorize.
 
@@ -276,7 +276,7 @@ Booking is **irreversible**, so the orchestrator can only **stage** it (persiste
 
 **Routines** unify care into one place: **workout** and **diet** plans (tailored to age, gender, weight, height, conditions and a required *goal*, with the diet coordinating with the workout — more fuel on training days), plus **skincare, hospital check-ups, sleep, hydration, eye care, physiotherapy** or anything custom. Every routine can be written **by hand** or **drafted by Gemini** from the person's profile, and can carry an optional recurring **Calendar + email reminder**.
 
-![Routines — tailored, adaptive plans](docs/illustrations/workout_diet_agent.png)
+<p align="center"><img src="docs/illustrations/workout_diet_agent.png" alt="Routines — tailored, adaptive plans" width="620" /></p>
 
 **Why:** plans only help if they fit *this* person and adapt as health changes. Storing them as typed KG nodes lets chat and the Routines view render one source of truth — and generalising "plans" into "routines" covers the rest of real caregiving without a second system. Dietary restrictions and injuries are treated as **hard constraints** (verified in the eval above).
 
@@ -284,7 +284,7 @@ Booking is **irreversible**, so the orchestrator can only **stage** it (persiste
 
 The user names a product (a device, supplement, or a medicine **they named**); grounded Google Search finds listings across Amazon / Flipkart / PharmEasy / Apollo / 1mg / Netmeds, normalized and **sorted cheapest → costliest**, with real links and a self-correcting JSON parse.
 
-![Product Agent — price comparison across stores](docs/illustrations/product_agent.png)
+<p align="center"><img src="docs/illustrations/product_agent.png" alt="Product Agent — price comparison across stores" width="620" /></p>
 
 **Why:** grounded Search gives real store links and indicative prices with no scraper cost or fragile paid API. The agent only compares what the user asked for and **never suggests or doses a medicine** — a hard safety line.
 
@@ -292,7 +292,7 @@ The user names a product (a device, supplement, or a medicine **they named**); g
 
 Upload → Gemini multimodal **OCR** (reads scans & photos, not just text PDFs) → chunk → **embed** (`text-embedding-004`) → store vectors. A question embeds → **cosine top-k** → Gemini answers **only from the excerpts**, citing the document. Files attached in chat inject their text directly.
 
-![Reader Agent — RAG over the user own documents](docs/illustrations/reader_agent.png)
+<p align="center"><img src="docs/illustrations/reader_agent.png" alt="Reader Agent — RAG over the user own documents" width="620" /></p>
 
 **Why:** grounded, cited Q&A is the safe way to answer "what's my room-rent limit?" — the model can't invent, only quote. Stuffing whole documents into every prompt is expensive and lossy; answer-only-from-excerpts is what prevents hallucinated medical figures.
 
@@ -314,7 +314,7 @@ Upload → Gemini multimodal **OCR** (reads scans & photos, not just text PDFs) 
 
 Not an agent, but what makes them coherent. Every agent writes typed facts (`condition`, `medication`, `appointment`, `scheme`, `insurance`, `routine`, `workout_plan`, `diet_plan`, `reminder`, `health_metric`…) as nodes linked to the person; a compact, token-cheap slice is injected into every LLM turn.
 
-![Memory — the per-profile knowledge graph](docs/illustrations/memory.png)
+<p align="center"><img src="docs/illustrations/memory.png" alt="Memory — the per-profile knowledge graph" width="620" /></p>
 
 **Why:** typed memory is compact enough to inject every turn, so WithCare **never re-asks** what it knows. Replaying raw chat history is expensive and noisy; a typed graph is queryable, renders the Profile/Routines/Tasks views, and can migrate to a real graph DB later without changing callers. Schema: [`withcare-backend/MEMORY.md`](withcare-backend/MEMORY.md).
 
