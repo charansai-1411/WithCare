@@ -22,12 +22,34 @@
   <img src="https://img.shields.io/badge/Material_3-757575?style=flat-square&logo=materialdesign&logoColor=white" alt="Material 3" />
 </p>
 
-<p align="center">
-  <a href="https://withcare-501007.web.app"><img alt="Open the app" src="https://img.shields.io/badge/▶_Open_the_App-1A73E8?style=for-the-badge&logoColor=white" /></a>
-  <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img alt="Watch the 3-minute demo" src="https://img.shields.io/badge/🎬_3--min_Demo-EA4335?style=for-the-badge&logoColor=white" /></a>
-  <a href="docs/withcare.pptx"><img alt="Open the pitch deck" src="https://img.shields.io/badge/📑_Pitch_Deck-E37400?style=for-the-badge&logoColor=white" /></a>
-  <a href="#evaluation"><img alt="See the evaluation" src="https://img.shields.io/badge/✅_98%25_on_152_tests-34A853?style=for-the-badge&logoColor=white" /></a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="215" valign="top">
+      <h2>☁️</h2>
+      <b>Live Demo</b><br />
+      <sub>The app, on Google&nbsp;Cloud</sub><br /><br />
+      <a href="https://withcare-501007.web.app"><img alt="Open the app" src="https://img.shields.io/badge/Open_the_App-1A73E8?style=for-the-badge&logo=googlecloud&logoColor=white" /></a>
+    </td>
+    <td align="center" width="215" valign="top">
+      <h2>🎬</h2>
+      <b>Demo Video</b><br />
+      <sub>3&nbsp;min: worry&nbsp;→&nbsp;actions</sub><br /><br />
+      <a href="https://drive.google.com/file/d/1sIDDV1ikFnoOqNnpevLZCvdCnnpMpLkM/view?usp=drive_link"><img alt="Watch the demo video" src="https://img.shields.io/badge/Watch_the_Flow-EA4335?style=for-the-badge&logo=googledrive&logoColor=white" /></a>
+    </td>
+    <td align="center" width="215" valign="top">
+      <h2>🛡️</h2>
+      <b>Evaluation</b><br />
+      <sub>149&nbsp;/&nbsp;152 on production</sub><br /><br />
+      <a href="#evaluation"><img alt="See the evaluation" src="https://img.shields.io/badge/See_the_Proof-34A853?style=for-the-badge&logo=checkmarx&logoColor=white" /></a>
+    </td>
+    <td align="center" width="215" valign="top">
+      <h2>📑</h2>
+      <b>Pitch Deck</b><br />
+      <sub>The final deck (.pptx)</sub><br /><br />
+      <a href="docs/withcare.pptx"><img alt="Open the pitch deck" src="https://img.shields.io/badge/Open_the_Deck-E37400?style=for-the-badge&logo=googleslides&logoColor=white" /></a>
+    </td>
+  </tr>
+</table>
 
 <p align="center">
   <img src="docs/hero.gif" alt="WithCare in action — chat, the agent trace, coverage, facilities, documents, routines and confirm-before-book" width="840" />
