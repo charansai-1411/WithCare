@@ -33,7 +33,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/hero.png" alt="From one worry to coordinated care — WithCare turns a caregiver's plain-language worry into grounded, auditable care actions" width="900" />
+  <img src="docs/hero.png" alt="One worry in, coordinated care out — the Gemini orchestrator routes to 9 specialists over a 12-fact graph memory, behind code-level guardrails; 149/152 adversarial tests, 0/3 injections land, 11 languages" width="920" />
 </p>
 
 <p align="center">
