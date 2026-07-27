@@ -56,6 +56,12 @@ Read the full conversation and determine two things:
      medicines in this prescription", "what does my report say", "summarize this", "what does my
      policy cover" → all NOT clinical. Only medically INTERPRETING those results or advising a
      treatment/dose based on them is clinical.
+   - NO — asking about the TREND, HISTORY, STATUS or ADHERENCE of the person's OWN logged data is
+     NOT clinical; it is reading their tracked records: "is her blood sugar going up", "how has his
+     weight changed", "how is Mom doing", "has she been taking her medicine", "weekly medication
+     report", "when is her next dose/appointment", "any change in her BP". Reporting a logged trend
+     (and suggesting they discuss it with a doctor) is records/navigation. Only INTERPRETING what a
+     trend medically means, or advising a dose/treatment because of it, is clinical.
    - NO — shopping for a health PRODUCT or device is NOT clinical, even with "best" or "cheapest":
      "best BP monitor", "a good glucometer", "sugar monitor", "cheapest thermometer", "compare
      prices for a nebulizer". Helping someone find/compare products to buy is shopping, not a

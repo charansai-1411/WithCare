@@ -356,6 +356,81 @@ TOOL_DECLS = [
                          "(workout, diet, skincare, checkup, sleep, hydration, eyecare, physio)."}},
             "required": []},
     },
+    {
+        "name": "health_summary",
+        "description": "TIME-AWARE overview of how a person is doing — vital TRENDS (not just the "
+                       "latest value), medication & exercise adherence, and any 'worth a look' "
+                       "flags, over a period. Use for 'how is Mom doing', 'how has dad been', "
+                       "'give me a weekly/monthly health summary'. Returns trends with "
+                       "first->last direction, adherence rates, recent appointments and attention "
+                       "flags — narrate these; the numbers are already computed.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Whose summary — name/relation, omit for active person."},
+            "period": {"type": "string", "description": "'week' or 'month' (default week)."}},
+            "required": []},
+    },
+    {
+        "name": "medication_report",
+        "description": "Medication (or exercise) ADHERENCE over a window — how many doses/sessions "
+                       "were taken vs missed, the rate, and the missed dates. Use for 'weekly "
+                       "medication report', 'did mom miss any doses', 'has dad been exercising', "
+                       "'how many walks did he do'. Set domain='exercise' for workouts.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Whose report — name/relation, omit for active person."},
+            "domain": {"type": "string", "description": "'medication' (default) or 'exercise'."},
+            "subject": {"type": "string", "description": "Optional — one medicine/activity, e.g. 'Metformin'."},
+            "since": {"type": "string", "description": "'week' | 'month' | 'year' (default week)."}},
+            "required": []},
+    },
+    {
+        "name": "vital_trend",
+        "description": "The TREND of one vital over time — first value, latest value, change, "
+                       "average and direction (rising/falling/stable). Use for 'is her sugar "
+                       "going up', 'how has his BP changed', 'any weight change', 'weight over "
+                       "the last few months'.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Whose vital — name/relation, omit for active person."},
+            "metric": {"type": "string", "description": "blood_sugar | blood_pressure | weight | "
+                       "heart_rate | spo2 | temperature."},
+            "since": {"type": "string", "description": "'week' | 'month' | 'year' (default month)."}},
+            "required": ["metric"]},
+    },
+    {
+        "name": "next_event",
+        "description": "The NEXT upcoming item of a kind. Use for 'when is the next appointment', "
+                       "'when is her next medicine/dose', 'when is the next check-up'. of='medication' "
+                       "returns the next dose time; of='appointment'/'checkup' returns the next visit.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Whose — name/relation, omit for active person."},
+            "of": {"type": "string", "description": "'appointment' | 'medication' | 'checkup'."}},
+            "required": ["of"]},
+    },
+    {
+        "name": "history_timeline",
+        "description": "The HISTORY of events in a window — appointments attended, lab reports, "
+                       "logged symptoms, dose changes. Use for 'what happened last month', "
+                       "'appointment history', 'past visits', 'what tests were done this year'.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Whose history — name/relation, omit for active person."},
+            "since": {"type": "string", "description": "'week' | 'month' | 'year' (default month)."},
+            "domain": {"type": "string", "description": "Optional filter: appointment | lab | "
+                       "medication | vital | exercise | health_event."}},
+            "required": []},
+    },
+    {
+        "name": "log_adherence",
+        "description": "RECORD into time-aware memory that a dose/exercise/meal was taken, missed "
+                       "or skipped, when the user TELLS you in conversation ('Mom took her morning "
+                       "tablet', 'Dad skipped his walk today', 'I missed my BP medicine'). Only log "
+                       "what the user actually reports — never invent adherence.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Who — name/relation, omit for active person."},
+            "domain": {"type": "string", "description": "'medication' | 'exercise' | 'diet'."},
+            "subject": {"type": "string", "description": "What, e.g. 'Metformin' or 'Morning walk'."},
+            "status": {"type": "string", "description": "'taken' | 'missed' | 'skipped' | 'done'."},
+            "when": {"type": "string", "description": "Optional ISO date/time; omit for now."}},
+            "required": ["domain", "subject", "status"]},
+    },
 ]
 
 def _strict_user_token() -> bool:
@@ -382,6 +457,12 @@ _AGENT_FOR_TOOL = {
     "search_documents": ("reader", "Searching your documents..."),
     "list_medications": ("orchestrator", "Checking the medicine supply..."),
     "list_routines": ("orchestrator", "Looking up the routines..."),
+    "health_summary": ("orchestrator", "Reviewing the health history and trends..."),
+    "medication_report": ("orchestrator", "Tallying doses taken and missed..."),
+    "vital_trend": ("orchestrator", "Charting the trend over time..."),
+    "next_event": ("orchestrator", "Finding what's next..."),
+    "history_timeline": ("orchestrator", "Pulling up the history..."),
+    "log_adherence": ("orchestrator", "Noting that down..."),
 }
 
 
@@ -436,6 +517,16 @@ class WithCareAgent:
         family = [m.model_dump() for m in (request.family_profile or [])]
         active_pid = family[0].get("id") if family else None
         memory = get_profile_memory(active_pid) if active_pid else ""
+        if active_pid:
+            # Temporal digest — a one-line trend/adherence snapshot so even a plain answer is
+            # time-aware before any tool call (see docs/TEMPORAL_MEMORY.md).
+            try:
+                from app.services.temporal_service import digest as _tm_digest
+                _dg = _tm_digest(request.user_id or "", active_pid)
+                if _dg:
+                    memory = (memory + f"\nTrends: {_dg}").strip()
+            except Exception:
+                pass
         base_ctx = {
             "coordinates": request.coordinates.model_dump() if request.coordinates else None,
             "family_profile": family,
@@ -835,6 +926,115 @@ class WithCareAgent:
                     body = body[:240].rstrip() + "…"
                 lines.append(f"- {r['name']} ({label}{', ' + freq if freq else ''}): {body}")
             return {"result": f"{pname}'s saved routines:\n" + "\n".join(lines)}
+
+        # ── Temporal Memory (time-aware history) ──────────────────────────────────
+        if name == "health_summary":
+            from app.services import temporal_service as tm
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            period = (args.get("period") or "week").lower()
+            s = tm.summary(uid, pid, period=period)
+            lines = [f"{pname} — {period} summary:"]
+            for metric, t in (s.get("trends") or {}).items():
+                arrow = {"rising": "up", "falling": "down", "stable": "steady"}.get(t["direction"], "")
+                lines.append(f"- {metric.replace('_', ' ')}: {t['first']}->{t['last']}{t['unit']} "
+                             f"({arrow}, avg {t['avg']})")
+            mad = s["medication_adherence"]
+            if mad["total"]:
+                lines.append(f"- medicines: {mad['done']}/{mad['total']} doses taken ({mad['rate']}%)")
+            ead = s["exercise_adherence"]
+            if ead["total"]:
+                lines.append(f"- exercise: {ead['done']}/{ead['total']} sessions done ({ead['rate']}%)")
+            if s.get("appointments"):
+                lines.append(f"- appointments: {len(s['appointments'])} in this period")
+            flags = s.get("attention") or []
+            if len(lines) == 1 and not flags:
+                return {"status": "not_found",
+                        "note": f"There's no time-tracked history for {pname} yet — vitals, doses or "
+                                "exercise haven't been logged. Suggest logging a few so trends can build."}
+            if flags:
+                lines.append("Worth a look: " + " ".join(f["message"] for f in flags))
+            return {"result": "\n".join(lines) + "\n\nNarrate this naturally and note any trend gently "
+                    "as 'worth discussing with the doctor' — never diagnose."}
+
+        if name == "medication_report":
+            from app.services import temporal_service as tm
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            domain = (args.get("domain") or "medication").lower()
+            since = (args.get("since") or "week").lower()
+            rep = tm.adherence_report(uid, pid, domain=domain, subject=args.get("subject"), since=since)
+            if not rep["by_subject"]:
+                word = "exercise sessions" if domain == "exercise" else "medicine doses"
+                return {"status": "not_found",
+                        "note": f"No {word} have been logged for {pname} in the last {since}, so there's "
+                                "nothing to report. They can tick doses off on the Medications page, or "
+                                "just tell me ('Mom took her tablet')."}
+            lines = [f"{pname} — {domain} adherence ({since}):"]
+            for subj, d in rep["by_subject"].items():
+                miss = f", missed {', '.join(dt[5:] for dt in d['missed_dates'])}" if d["missed_dates"] else ""
+                lines.append(f"- {subj}: {d['done']}/{d['total']} ({d['rate']}%){miss}")
+            return {"result": "\n".join(lines)}
+
+        if name == "vital_trend":
+            from app.services import temporal_service as tm
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            metric = (args.get("metric") or "").strip().lower().replace(" ", "_")
+            t = tm.trend(uid, pid, metric, since=(args.get("since") or "month").lower())
+            if not t.get("found"):
+                return {"status": "not_found",
+                        "note": f"No {metric.replace('_',' ')} readings are logged for {pname} yet — "
+                                "no trend to show. Suggest logging a few on the Health page."}
+            arrow = {"rising": "risen", "falling": "fallen", "stable": "stayed steady"}[t["direction"]]
+            return {"result": f"{pname}'s {metric.replace('_',' ')} has {arrow} from {t['first']} to "
+                    f"{t['last']}{t['unit']} between {t['from_date']} and {t['to_date']} "
+                    f"({t['n']} readings, avg {t['avg']}, delta {t['delta']}). "
+                    "State the trend; if it's moving the wrong way, gently suggest raising it with the doctor."}
+
+        if name == "next_event":
+            from app.services import temporal_service as tm
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            of = (args.get("of") or "appointment").lower()
+            nx = tm.next_event(uid, pid, of=of)
+            if not nx.get("found"):
+                kind = {"medication": "upcoming dose", "checkup": "check-up"}.get(of, "appointment")
+                return {"status": "not_found",
+                        "note": f"There's no scheduled {kind} for {pname} on record. Offer to help book "
+                                "one or set a reminder."}
+            if of in ("medication", "medicine", "dose"):
+                return {"result": f"{pname}'s next dose is {nx['what']} at {nx.get('time') or nx['when']}."}
+            doc = f" with {nx['doctor']}" if nx.get("doctor") else ""
+            return {"result": f"{pname}'s next {of} is {nx['what']}{doc} on {nx['when']}."}
+
+        if name == "history_timeline":
+            from app.services import temporal_service as tm
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            since = (args.get("since") or "month").lower()
+            items = tm.timeline(uid, pid, since=since, domain=args.get("domain"))
+            if not items:
+                return {"status": "not_found",
+                        "note": f"No history recorded for {pname} in the last {since}."}
+            lines = [f"- {it['date']}: {it['subject']} — {it['detail']}" for it in items[:20]]
+            return {"result": f"{pname}'s history ({since}):\n" + "\n".join(lines)}
+
+        if name == "log_adherence":
+            from app.services import temporal_service as tm
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            domain = (args.get("domain") or "medication").lower()
+            subject = (args.get("subject") or "").strip()
+            status = (args.get("status") or "").lower().strip()
+            if not subject or status not in ("taken", "missed", "skipped", "done"):
+                return {"status": "need_more",
+                        "note": "Ask which medicine/activity and whether it was taken or missed."}
+            tm.log_adherence(uid, pid, domain, subject, status, occurred_at=args.get("when"),
+                             source="conversation")
+            verb = {"taken": "taken", "done": "done", "missed": "missed", "skipped": "skipped"}[status]
+            return {"result": f"Noted — logged {subject} as {verb} for {pname}. I'll factor it into "
+                    "their adherence and trends."}
 
         if name in ("update_reminder", "cancel_reminder"):
             uid = base_ctx.get("user_id", "")

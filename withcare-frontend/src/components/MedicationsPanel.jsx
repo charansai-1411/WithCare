@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { fetchMedications, addMedication, refillMedication, deleteMedication } from '../services/medicationApi';
+import { logAdherence, fetchAdherence } from '../services/temporalApi';
 
 function Sym({ name, className = '', fill = false }) {
   return <span className={`material-symbols-outlined ${fill ? 'msym-fill' : ''} ${className}`}>{name}</span>;
@@ -33,9 +34,27 @@ export default function MedicationsPanel({ userId, profiles = [], activeProfileI
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState({});
   const [err, setErr] = useState('');
+  const [adh, setAdh] = useState({});      // medicine name -> { done, total, rate }
+  const [logged, setLogged] = useState({}); // med id -> 'taken' | 'missed' (today, optimistic)
 
-  const load = useCallback(() => { fetchMedications(userId).then(setMeds).catch(() => setMeds([])); }, [userId]);
+  const loadAdh = useCallback(() => {
+    fetchAdherence(userId, { domain: 'medication', since: 'week' })
+      .then((r) => setAdh(r.by_subject || {})).catch(() => setAdh({}));
+  }, [userId]);
+  const load = useCallback(() => {
+    fetchMedications(userId).then(setMeds).catch(() => setMeds([]));
+    loadAdh();
+  }, [userId, loadAdh]);
   useEffect(() => { load(); }, [load]);
+
+  async function markDose(m, status) {
+    setLogged((l) => ({ ...l, [m.id]: status }));
+    try {
+      await logAdherence(userId, { profile_id: m.profile_id || null, domain: 'medication',
+                                   subject: m.name, status });
+      loadAdh();
+    } catch { setLogged((l) => ({ ...l, [m.id]: undefined })); }
+  }
 
   const openForm = () => {
     setForm({ ...BLANK, profileId: activeProfileId || (profiles[0] && profiles[0].id) || '' });
@@ -160,6 +179,8 @@ export default function MedicationsPanel({ userId, profiles = [], activeProfileI
         <div className="flex flex-col gap-2.5">
           {list.map((m) => {
             const b = statusBadge(m);
+            const a = adh[m.name];
+            const mark = logged[m.id];
             return (
               <div key={m.id} className="flex items-center gap-3.5 bg-surface-container-lowest border border-outline-variant rounded-card p-3.5">
                 <div className="w-11 h-11 rounded-xl bg-primary-fixed shrink-0 flex items-center justify-center">
@@ -172,6 +193,23 @@ export default function MedicationsPanel({ userId, profiles = [], activeProfileI
                   <div className="flex items-center gap-2 flex-wrap mt-1 text-[12px] text-on-surface-variant">
                     <span className="inline-flex items-center gap-1"><Sym name="schedule" className="text-[14px]" />{(m.times || []).join(', ')}</span>
                     {m.recipient && <span className="px-2 py-0.5 bg-g-green-tint text-g-green-text rounded-full text-[11px] font-medium">For {m.recipient}</span>}
+                  </div>
+                  {/* Adherence check-off — the manual source for Temporal Memory */}
+                  <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                    <span className="text-[11.5px] text-on-surface-variant mr-0.5">Today:</span>
+                    <button onClick={() => markDose(m, 'taken')} title="Mark this dose taken"
+                      className={`press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold border transition-colors ${mark === 'taken' ? 'bg-g-green-tint text-g-green-text border-transparent' : 'bg-surface-container text-on-surface-variant border-outline-variant/60 hover:bg-g-green-tint/60'}`}>
+                      <Sym name={mark === 'taken' ? 'check_circle' : 'check'} className="text-[15px]" fill={mark === 'taken'} /> Taken
+                    </button>
+                    <button onClick={() => markDose(m, 'missed')} title="Mark this dose missed"
+                      className={`press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold border transition-colors ${mark === 'missed' ? 'bg-error-container text-error border-transparent' : 'bg-surface-container text-on-surface-variant border-outline-variant/60 hover:bg-error-container/60'}`}>
+                      <Sym name="close" className="text-[15px]" /> Missed
+                    </button>
+                    {a && a.total > 0 && (
+                      <span className="text-[11.5px] text-on-surface-variant ml-1">
+                        · <b className="text-on-surface">{a.done}/{a.total}</b> this week{a.rate != null ? ` (${a.rate}%)` : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold shrink-0 ${b.cls}`}>

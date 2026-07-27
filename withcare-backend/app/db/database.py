@@ -141,6 +141,30 @@ def init_db():
         created_at TEXT DEFAULT (datetime('now'))
     );
 
+    -- Temporal Memory: append-only, timestamped history across all care domains. The KG holds
+    -- the CURRENT state (upsert); this holds what HAPPENED and how it changed over time, with
+    -- validity intervals (valid_from/valid_to, NULL = still in effect) for versioned facts.
+    CREATE TABLE IF NOT EXISTS events (
+        id           TEXT PRIMARY KEY,
+        user_id      TEXT NOT NULL,
+        profile_id   TEXT,
+        domain       TEXT NOT NULL,        -- vital|medication|exercise|diet|appointment|lab|reminder|health_event
+        subject      TEXT DEFAULT '',      -- 'Metformin', 'Morning walk', 'HbA1c', 'Cardiologist'
+        event_type   TEXT NOT NULL,        -- reading|taken|missed|skipped|done|changed|booked|attended|recorded|noted
+        value        REAL,                 -- numeric payload (170, 62, 45)
+        value2       REAL,                 -- second number (diastolic BP)
+        unit         TEXT DEFAULT '',
+        status       TEXT DEFAULT '',
+        occurred_at  TEXT NOT NULL,        -- VALID time: when it happened in the real world
+        recorded_at  TEXT DEFAULT (datetime('now')),  -- TRANSACTION time: when we learned it
+        valid_from   TEXT,                 -- interval start (defaults to occurred_at)
+        valid_to     TEXT,                 -- interval end; NULL = still in effect
+        source       TEXT DEFAULT 'manual',-- manual|conversation|system|import
+        subject_ref  TEXT DEFAULT '',      -- link to the kg_nodes.id this concerns
+        meta         TEXT DEFAULT '{}',
+        created_at   TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(user_id);
     CREATE INDEX IF NOT EXISTS idx_msg_conv ON messages(conversation_id);
     CREATE INDEX IF NOT EXISTS idx_prof_user ON profiles(user_id);
@@ -152,6 +176,10 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_doc_user ON documents(user_id);
     CREATE INDEX IF NOT EXISTS idx_chunk_user ON doc_chunks(user_id);
     CREATE INDEX IF NOT EXISTS idx_chunk_doc ON doc_chunks(document_id);
+    CREATE INDEX IF NOT EXISTS idx_ev_profile_time   ON events(profile_id, occurred_at);
+    CREATE INDEX IF NOT EXISTS idx_ev_profile_domain ON events(profile_id, domain, occurred_at);
+    CREATE INDEX IF NOT EXISTS idx_ev_open_interval  ON events(profile_id, subject, valid_to);
+    CREATE INDEX IF NOT EXISTS idx_ev_user ON events(user_id);
     """)
 
     # Idempotent column additions for existing DBs.
