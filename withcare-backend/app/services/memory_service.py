@@ -159,6 +159,7 @@ _TYPE_LABEL = {
     "insurance": "Insurance",
     "workout_plan": "Workout plan",
     "diet_plan": "Diet plan",
+    "routine": "Routines",
     "reminder": "Reminders",
     "task": "Tasks",
     "health_metric": "Health",

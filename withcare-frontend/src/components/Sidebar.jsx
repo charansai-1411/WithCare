@@ -7,6 +7,7 @@ const NAV = [
   { key: 'routines', label: 'Routines',          icon: 'event_repeat' },
   { key: 'health',  label: 'Health',            icon: 'monitoring' },
   { key: 'emergency', label: 'Emergency',       icon: 'emergency' },
+  { key: 'visit',   label: 'Record Visit',      icon: 'stethoscope' },
   { key: 'reader',  label: 'Reader',            icon: 'auto_stories' },
   { key: 'profiles',label: 'Profiles',          icon: 'groups' },
   { key: 'connectors', label: 'Connectors',     icon: 'hub' },

@@ -325,6 +325,37 @@ TOOL_DECLS = [
                       "label/tag matches (e.g. 'Amma insurance'). Omit to search all documents."}},
             "required": ["query"]},
     },
+    {
+        "name": "list_medications",
+        "description": "Look up the medicines a person is currently taking and their SUPPLY STATUS — "
+                       "how many days of supply are left and the date each medicine runs out. Use "
+                       "this WHENEVER the user asks about their (or a family member's) medicines: "
+                       "'when will my medicines run out', 'how many days of <medicine> are left', "
+                       "'which medicines need a refill', 'what medicines is dad on'. Returns each "
+                       "medicine with dose, dose times, quantity, days_left, run_out_date and a "
+                       "status of ok / refill_soon / out. Answer from this data — do not say you "
+                       "lack the information without calling this first.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Whose medicines — a name or relation like "
+                       "'dad'/'mother'/'Amma'. Omit for the active person."}},
+            "required": []},
+    },
+    {
+        "name": "list_routines",
+        "description": "Look up the care routines a person follows — workout, diet, skincare, "
+                       "hospital check-ups, sleep, hydration, eye care, physiotherapy, or custom "
+                       "ones. Use WHENEVER the user asks 'what is my/dad's routine', 'show my "
+                       "routines', 'what's my skincare routine', or anything about their saved "
+                       "routines. Returns each routine's name, category, frequency/schedule and "
+                       "details. Answer from this data — do not say you lack the information "
+                       "without calling this first.",
+        "parameters": {"type": "object", "properties": {
+            "person": {"type": "string", "description": "Whose routines — a name or relation like "
+                       "'dad'/'mother'/'Amma'. Omit for the active person."},
+            "category": {"type": "string", "description": "Optional — filter to one category "
+                         "(workout, diet, skincare, checkup, sleep, hydration, eyecare, physio)."}},
+            "required": []},
+    },
 ]
 
 def _strict_user_token() -> bool:
@@ -349,6 +380,8 @@ _AGENT_FOR_TOOL = {
     "forget": ("orchestrator", "Updating memory..."),
     "find_products": ("product_agent", "Comparing prices across stores..."),
     "search_documents": ("reader", "Searching your documents..."),
+    "list_medications": ("orchestrator", "Checking the medicine supply..."),
+    "list_routines": ("orchestrator", "Looking up the routines..."),
 }
 
 
@@ -751,6 +784,51 @@ class WithCareAgent:
             if remind and saved.get("reminds"):
                 done += f" Reminder set for {rtime}."
             return {"result": done + reminder_note}
+
+        if name == "list_medications":
+            from app.services import medication_service as med
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            meds = await med.list_medications(uid, pid, base_ctx.get("connector_tokens", {}))
+            if not meds:
+                return {"status": "not_found",
+                        "note": f"No medicines are tracked for {pname}. Tell them that, and offer to "
+                                "add one on the Medications page (name, dose, times, quantity)."}
+            lines = []
+            for m in meds:
+                dl, ro = m.get("days_left"), m.get("run_out_date")
+                supply = (f"{dl} day(s) left" + (f", runs out {ro}" if ro else "")) if dl is not None \
+                    else "supply not tracked (add quantity + doses/day to estimate)"
+                st = {"out": "OUT — refill now", "refill_soon": "refill soon"}.get(m.get("status"), "ok")
+                times = ", ".join(m.get("times") or []) or "no set times"
+                lines.append(f"- {m['name']}"
+                             + (f" ({m['dose']})" if m.get("dose") else "")
+                             + f": {supply} [{st}]. Doses: {times}.")
+            return {"result": f"{pname}'s medicines and supply:\n" + "\n".join(lines)
+                    + "\n\nPresent this clearly; call out any that are OUT or refill-soon first."}
+
+        if name == "list_routines":
+            from app.services import routine_service as rt
+            uid = base_ctx.get("user_id", "")
+            pid, pname, _ = self._target_profile(args.get("person"), base_ctx)
+            routines = rt.list_routines(uid, pid)
+            cat = (args.get("category") or "").strip().lower()
+            if cat:
+                routines = [r for r in routines if (r.get("category") or "") == cat]
+            if not routines:
+                scope = f" in the {rt.CATEGORIES.get(cat, cat)} category" if cat else ""
+                return {"status": "not_found",
+                        "note": f"No routines are saved for {pname}{scope}. Tell them that, and offer "
+                                "to create one (workout, diet, skincare, checkup, etc.)."}
+            lines = []
+            for r in routines:
+                label = rt.CATEGORIES.get(r.get("category"), "Routine")
+                freq = r.get("frequency") or ""
+                body = (r.get("content") or "").strip().replace("\n", " ")
+                if len(body) > 240:
+                    body = body[:240].rstrip() + "…"
+                lines.append(f"- {r['name']} ({label}{', ' + freq if freq else ''}): {body}")
+            return {"result": f"{pname}'s saved routines:\n" + "\n".join(lines)}
 
         if name in ("update_reminder", "cancel_reminder"):
             uid = base_ctx.get("user_id", "")

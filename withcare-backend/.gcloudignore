@@ -1,0 +1,29 @@
+# Controls what `gcloud run deploy --source` uploads to Cloud Build.
+# (Cloud Build still needs the Dockerfile + app code, so DON'T ignore those.)
+
+# Python cruft
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Secrets / credentials — NEVER upload
+.env
+.env.*
+token.json
+client_secret*.json
+service-account*.json
+*credentials*.json
+*.pem
+*.key
+
+# Local database (the real DB lives on the GCS volume in Cloud Run)
+*.db
+*.sqlite
+*.sqlite3
+
+# VCS
+.git
+.gitignore

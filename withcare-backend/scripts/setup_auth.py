@@ -21,6 +21,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/gmail.send",
 ]
 
 TOKEN_PATH = "token.json"
@@ -42,7 +43,14 @@ def main():
     creds = None
 
     if os.path.exists(TOKEN_PATH):
-        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+        except Exception:
+            creds = None
+        # An older token.json won't have the new gmail.send scope — force a fresh consent.
+        if creds and not set(SCOPES).issubset(set(creds.scopes or [])):
+            print("Existing token.json is missing a required scope (gmail.send) — re-consenting.")
+            creds = None
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -67,6 +75,7 @@ def main():
             "https://www.googleapis.com/auth/calendar.events": "Google Calendar — create/edit events",
             "https://www.googleapis.com/auth/drive.file":      "Google Drive — create/read files made by this app",
             "https://www.googleapis.com/auth/documents":       "Google Docs — create and edit documents",
+            "https://www.googleapis.com/auth/gmail.send":      "Gmail — send reminder & SOS emails",
         }.get(scope, scope)
         print(f"  OK  {label}")
 

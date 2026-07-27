@@ -135,6 +135,45 @@ def ingest_document(user_id: str, filename: str, label: str, mime: str, file_byt
     return dict(row)
 
 
+def ingest_text(user_id: str, label: str, text: str, kind: str = "document",
+                filename: str | None = None) -> dict:
+    """Store text WE ALREADY HAVE (e.g. a doctor-visit summary) as a Reader document — chunk,
+    embed and index it so RAG/search_documents can answer from it later. Skips OCR/extraction
+    since there's no file to read. Returns the document row."""
+    text = (text or "").strip()
+    doc_id = "d-" + uuid.uuid4().hex[:12]
+    fname = filename or (label or "note").strip() or "note"
+    db = get_db()
+    db.execute(
+        "INSERT INTO documents(id, user_id, filename, label, mime, kind, status) "
+        "VALUES(?,?,?,?,?,?, 'processing')",
+        (doc_id, user_id, fname, label or "", "text/plain", kind or "document"),
+    )
+    db.commit()
+    try:
+        if not text:
+            raise ValueError("No text to store.")
+        chunks = _chunk(text)
+        vectors = embed_texts(chunks, task_type="RETRIEVAL_DOCUMENT")
+        for idx, (ch, vec) in enumerate(zip(chunks, vectors)):
+            db.execute(
+                "INSERT INTO doc_chunks(id, document_id, user_id, chunk_index, text, embedding) VALUES(?,?,?,?,?,?)",
+                ("dc-" + uuid.uuid4().hex[:12], doc_id, user_id, idx, ch, json.dumps(vec)),
+            )
+        db.execute(
+            "UPDATE documents SET status='ready', char_count=?, chunk_count=? WHERE id=?",
+            (len(text), len(chunks), doc_id),
+        )
+        db.commit()
+    except Exception as e:
+        logger.warning(f"ingest_text failed for {label!r}: {e}")
+        db.execute("UPDATE documents SET status='error', error=? WHERE id=?", (str(e)[:300], doc_id))
+        db.commit()
+    row = db.execute("SELECT * FROM documents WHERE id=?", (doc_id,)).fetchone()
+    db.close()
+    return dict(row)
+
+
 def list_documents(user_id: str) -> list[dict]:
     db = get_db()
     rows = db.execute(

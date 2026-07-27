@@ -52,6 +52,89 @@ def _system_prompt() -> str:
     )
 
 
+def _scribe_prompt() -> str:
+    # A SILENT scribe: it must not converse. We only consume its input transcription.
+    return (
+        "You are a silent medical scribe. You are listening to a live doctor-patient consultation "
+        "at a clinic in India. Do NOT speak, respond, greet, or comment. Produce no output. Your "
+        "only job is to let the system transcribe what is being said. Stay completely silent."
+    )
+
+
+@router.websocket("/ws/scribe")
+async def scribe_ws(ws: WebSocket):
+    """Listen-only 'Record Doctor Visit' mode: streams the consultation's audio to Gemini Live,
+    which transcribes it (input transcription) WITHOUT talking back. The running transcript is
+    sent to the browser as {"type":"transcript","text":...}; the browser accumulates it and, on
+    stop, POSTs it to /api/visits/save for extraction + storage in the Reader."""
+    await ws.accept()
+    client = get_live_client()
+
+    # Enable input-audio transcription; keep TEXT modality (required) but the model stays silent.
+    cfg_kwargs = dict(
+        response_modalities=["TEXT"],
+        system_instruction=types.Content(parts=[types.Part(text=_scribe_prompt())]),
+    )
+    try:
+        cfg_kwargs["input_audio_transcription"] = types.AudioTranscriptionConfig()
+    except Exception:
+        logger.warning("AudioTranscriptionConfig unavailable — scribe transcript may be limited")
+    config = types.LiveConnectConfig(**cfg_kwargs)
+
+    try:
+        async with client.aio.live.connect(model=settings.gemini_live_model, config=config) as session:
+            await ws.send_text(json.dumps({"type": "ready"}))
+            logger.info("Scribe session connected")
+
+            async def browser_to_gemini():
+                while True:
+                    msg = await ws.receive()
+                    if msg.get("type") == "websocket.disconnect":
+                        raise WebSocketDisconnect()
+                    data = msg.get("bytes")
+                    if data:
+                        await session.send_realtime_input(
+                            audio=types.Blob(data=data, mime_type="audio/pcm;rate=16000")
+                        )
+                    elif msg.get("text"):
+                        try:
+                            evt = json.loads(msg["text"])
+                        except Exception:
+                            evt = {}
+                        if evt.get("type") == "end":
+                            raise WebSocketDisconnect()
+
+            async def gemini_to_browser():
+                while True:
+                    got_turn = False
+                    async for response in session.receive():
+                        got_turn = True
+                        sc = getattr(response, "server_content", None)
+                        # The transcription of what the mic heard — this is the whole point.
+                        it = getattr(sc, "input_transcription", None) if sc else None
+                        if it and getattr(it, "text", None):
+                            await ws.send_text(json.dumps({"type": "transcript", "text": it.text}))
+                        # We deliberately ignore any model text/audio — the scribe must stay silent.
+                    if not got_turn:
+                        break
+
+            await asyncio.gather(browser_to_gemini(), gemini_to_browser())
+
+    except WebSocketDisconnect:
+        logger.info("Scribe session: client disconnected")
+    except Exception as e:
+        logger.error(f"Scribe session failed: {e}")
+        try:
+            await ws.send_text(json.dumps({"type": "error", "message": f"Recording is unavailable: {e}"}))
+        except Exception:
+            pass
+    finally:
+        try:
+            await ws.close()
+        except Exception:
+            pass
+
+
 @router.websocket("/ws/live")
 async def live_ws(ws: WebSocket):
     await ws.accept()
