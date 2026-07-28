@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { fetchAuthConfig, googleLogin, devLogin } from '../services/authService';
+import { fetchAuthConfig, googleLogin, devLogin, judgeLogin } from '../services/authService';
 import { GeminiBadge, GeminiDisclaimer } from './ui/GeminiBadge';
 
 function Sym({ name, className = '', fill = false }) {
@@ -47,6 +47,12 @@ export default function LoginScreen({ onLogin }) {
     catch { setError('Dev login failed — is the backend running?'); setBusy(false); }
   }
 
+  async function handleJudge() {
+    setBusy(true); setError('');
+    try { onLogin(await judgeLogin()); }
+    catch { setError('Demo login failed — please try again.'); setBusy(false); }
+  }
+
   return (
     <div className="h-screen flex items-center justify-center bg-background font-body-md relative overflow-hidden">
       {/* ambient gradient glow */}
@@ -73,12 +79,30 @@ export default function LoginScreen({ onLogin }) {
           </div>
         )}
 
+        {cfg?.judge_login_enabled && (
+          <>
+            {googleEnabled && (
+              <div className="flex items-center gap-3 my-3.5">
+                <div className="flex-1 h-px bg-outline-variant/60" />
+                <span className="text-[11px] text-on-surface-variant/70 uppercase tracking-wide">or</span>
+                <div className="flex-1 h-px bg-outline-variant/60" />
+              </div>
+            )}
+            <button onClick={handleJudge} disabled={busy}
+              className="w-full py-3 rounded-full text-[14px] font-semibold text-white intelligence-gradient shadow-md shadow-primary/20 hover:brightness-105 transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2">
+              <Sym name="gavel" className="text-[18px]" fill />
+              {busy ? 'Loading demo…' : 'Judge login — explore with demo data'}
+            </button>
+            <p className="mt-2 text-[11.5px] text-on-surface-variant/80 leading-snug">
+              No email needed. Opens a ready-made family (Amma, Appa, Priya &amp; Bruno) with
+              medicines, trends, routines and reports already loaded.
+            </p>
+          </>
+        )}
+
         {cfg?.dev_login_enabled && (
           <button onClick={handleDev} disabled={busy}
-            className={`w-full py-3 rounded-full text-[14px] font-semibold transition active:scale-[0.98] disabled:opacity-60
-              ${googleEnabled
-                ? 'border border-outline-variant text-on-surface hover:bg-surface-container'
-                : 'intelligence-gradient text-white shadow-md shadow-primary/20 hover:brightness-105'}`}>
+            className="w-full mt-3 py-2.5 rounded-full text-[13px] font-medium border border-outline-variant text-on-surface-variant hover:bg-surface-container transition active:scale-[0.98] disabled:opacity-60">
             {busy ? 'Signing in…' : 'Continue as guest (dev)'}
           </button>
         )}

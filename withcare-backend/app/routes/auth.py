@@ -103,6 +103,31 @@ def dev_login(body: dict):
     return _user_dict(row)
 
 
+@router.post("/judge-login")
+def judge_login(body: dict = None):
+    """Judge / demo login — ALWAYS available, even in production. Mints a fresh account preloaded
+    with realistic mock data (family profiles, medicines, vitals trends, adherence, routines,
+    appointments, documents) so a judge can explore every feature without signing in with their
+    own email or adding anything from scratch."""
+    uid = "u-judge-" + uuid.uuid4().hex[:10]
+    db = get_db()
+    db.execute(
+        "INSERT INTO users(id, name, email, auth_provider) VALUES(?,?,?, 'judge')",
+        (uid, "Charan (demo)", f"{uid}@judge.withcare.local"),
+    )
+    db.commit()
+    db.close()
+    try:
+        from app.services.demo_seed import seed_demo
+        seed_demo(uid)
+    except Exception as e:
+        logger.warning(f"demo seed failed for {uid}: {e}")  # login still succeeds, just empty
+    db = get_db()
+    row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    db.close()
+    return _user_dict(row)
+
+
 @router.get("/me")
 def me(x_user_id: Optional[str] = Header(None)):
     if not x_user_id:
@@ -122,4 +147,5 @@ def auth_config():
         "google_client_id": settings.google_oauth_client_id,
         "google_enabled": bool(settings.google_oauth_client_id),
         "dev_login_enabled": settings.environment != "production",
+        "judge_login_enabled": True,   # demo login is always on, even in production
     }

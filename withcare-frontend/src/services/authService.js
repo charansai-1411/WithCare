@@ -50,3 +50,14 @@ export async function devLogin(name) {
   if (!r.ok) throw new Error('Dev login failed');
   return setStoredUser(await r.json());
 }
+
+// Judge/demo login — a fresh account preloaded with mock data, no email needed. Works in prod.
+export async function judgeLogin() {
+  const r = await fetch(`${BASE}/api/auth/judge-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!r.ok) throw new Error('Judge login failed');
+  return setStoredUser(await r.json());
+}
