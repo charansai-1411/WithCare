@@ -72,6 +72,42 @@ Tests advised: HbA1c and a lipid profile before the next visit.
 Follow-up: Cardiologist review in one week.
 """
 
+_ANC = """ANTENATAL ULTRASOUND REPORT
+Patient: Priya   Gestational age: 22 weeks 3 days   Referred by: Dr. Meera
+Findings: Single live intrauterine pregnancy. Fetal heart rate 148 bpm, regular.
+Growth: consistent with dates; estimated fetal weight appropriate for gestational age.
+Placenta: fundal, not low-lying. Amniotic fluid: adequate.
+Advice: continue iron, folic acid and calcium supplements. Anomaly scan findings were normal.
+Next: routine antenatal review in 4 weeks; glucose tolerance test at 24-28 weeks.
+"""
+
+_VISIT_APPA = """DOCTOR VISIT RECORD
+Patient: Appa   Date: two weeks ago   Hospital: Yashoda Hospital   Doctor: Dr. Iyer (Orthopedics)
+Summary: Left knee osteoarthritis reviewed. Advised to avoid jumping and running, continue
+physiotherapy, and take Paracetamol 500mg only as needed for pain.
+Activity: low-impact only - walking, chair squats, seated leg raises.
+Tests advised: repeat knee X-ray in 6 months.
+Follow-up: review in 3 months, or sooner if pain worsens.
+"""
+
+_LAB = """LABORATORY REPORT
+Patient: Amma   Lab: SRL Diagnostics   Collected: last week
+HbA1c: 8.2 % (target < 7.0) - high.
+Fasting blood sugar: 168 mg/dL (normal 70-100) - high.
+Post-prandial blood sugar: 232 mg/dL.
+Total cholesterol: 214 mg/dL. LDL: 138 mg/dL. HDL: 42 mg/dL. Triglycerides: 180 mg/dL.
+Serum creatinine: 0.9 mg/dL (normal). Blood pressure at visit: 148/92 mmHg.
+Impression: sub-optimal glycaemic control; borderline lipids. Correlate clinically.
+"""
+
+_XRAY = """RADIOLOGY REPORT - LEFT KNEE X-RAY
+Patient: Appa   Modality: X-ray, left knee (AP & lateral)   Referred by: Dr. Iyer
+Findings: Reduced medial joint space with marginal osteophytes. Mild subchondral sclerosis.
+No fracture or dislocation. Soft tissues unremarkable.
+Impression: moderate osteoarthritis of the left knee (Grade 2-3).
+Advice: joint-protection measures, physiotherapy, weight management.
+"""
+
 
 def seed_demo(user_id: str) -> dict:
     """Populate a fresh user with a full demo dataset. No-op if it already has profiles."""
@@ -81,15 +117,22 @@ def seed_demo(user_id: str) -> dict:
         return {"seeded": False, "reason": "account already has data"}
 
     # ── care profiles: self + a real family + a pet ──
-    _profile(db, user_id, "Charan", relation="Your own care", is_self=1, age=30, gender="male")
+    # (mock @example.com emails so the Emergency "contacts" list populates; example.com never
+    #  delivers, and real SOS sending still needs the caregiver's own Gmail connected.)
+    charan = _profile(db, user_id, "Charan", relation="Your own care", is_self=1, age=30,
+                      gender="male", weight=74, height=176, email="charan.demo@example.com")
     amma = _profile(db, user_id, "Amma", relation="Mother", age=68, gender="female", weight=62,
                     height=155, conditions="type 2 diabetes, hypertension",
-                    allergies="dairy (lactose intolerant), penicillin", blood_group="B+")
+                    allergies="dairy (lactose intolerant), penicillin", blood_group="B+",
+                    email="amma.demo@example.com")
     appa = _profile(db, user_id, "Appa", relation="Father", age=72, gender="male", weight=78,
                     height=170, conditions="arthritis", notes="bad left knee, cannot jump or run",
-                    blood_group="O+")
-    priya = _profile(db, user_id, "Priya", relation="Wife", age=29, gender="female", blood_group="A+")
-    _profile(db, user_id, "Bruno", kind="pet", species="dog", relation="Pet", age=4)
+                    blood_group="O+", email="appa.demo@example.com")
+    priya = _profile(db, user_id, "Priya", relation="Wife", age=29, gender="female", weight=63,
+                     height=162, blood_group="A+", conditions="pregnancy (2nd trimester)",
+                     notes="Expecting their first child; around 24 weeks, due in about 4 months.",
+                     email="priya.demo@example.com")
+    bruno = _profile(db, user_id, "Bruno", kind="pet", species="dog", relation="Pet", age=4, weight=18)
     db.commit()
     db.close()
 
@@ -109,6 +152,25 @@ def seed_demo(user_id: str) -> dict:
         vitals_service.log_vital(user_id, amma, "weight", value=w, at=_ago(90 - 30 * i))
     for i, (sy, di) in enumerate([(130, 84), (138, 88), (148, 92)]):
         vitals_service.log_vital(user_id, amma, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
+    for i, hr in enumerate([78, 82, 80]):
+        vitals_service.log_vital(user_id, amma, "heart_rate", value=hr, at=_ago(14 - 6 * i))
+    for i, sp in enumerate([97, 97, 96]):
+        vitals_service.log_vital(user_id, amma, "spo2", value=sp, at=_ago(14 - 6 * i))
+    # Appa: stable weight, mildly high BP, heart rate
+    for i, w in enumerate([79, 78.5, 78, 78]):
+        vitals_service.log_vital(user_id, appa, "weight", value=w, at=_ago(90 - 30 * i))
+    for i, (sy, di) in enumerate([(128, 82), (132, 84), (130, 82)]):
+        vitals_service.log_vital(user_id, appa, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
+    # Charan (self, the default view): a healthy adult baseline so the Health page isn't empty
+    for i, w in enumerate([75, 74.5, 74, 74]):
+        vitals_service.log_vital(user_id, charan, "weight", value=w, at=_ago(90 - 30 * i))
+    for i, (sy, di) in enumerate([(120, 78), (118, 76), (122, 80)]):
+        vitals_service.log_vital(user_id, charan, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
+    for i, hr in enumerate([72, 70, 74]):
+        vitals_service.log_vital(user_id, charan, "heart_rate", value=hr, at=_ago(14 - 6 * i))
+    # Bruno: pet weight tracking
+    for i, w in enumerate([17.5, 17.8, 18, 18]):
+        vitals_service.log_vital(user_id, bruno, "weight", value=w, at=_ago(90 - 30 * i))
 
     # ── adherence history (Temporal Memory) ──
     for i, st in enumerate(["taken", "missed", "taken", "taken", "missed", "taken", "taken"]):
@@ -130,25 +192,78 @@ def seed_demo(user_id: str) -> dict:
              "Twice daily (AM & PM)", "Amma")
     _routine(user_id, amma, "Quarterly eye check-up", "checkup",
              "Diabetic retinopathy screening with the ophthalmologist.", "Every 3 months", "Amma")
+    _routine(user_id, amma, "Stay hydrated", "hydration",
+             "8 glasses of water through the day; a glass with each medicine.", "Throughout the day", "Amma")
+    _routine(user_id, amma, "Daily diabetic foot check", "checkup",
+             "Check feet for cuts, blisters or numbness; moisturise, but not between the toes.", "Daily", "Amma")
+    _routine(user_id, appa, "Knee physiotherapy", "physio",
+             "Quad sets, straight-leg raises, and heel slides — 10 reps each, twice a day.", "Twice daily", "Appa")
+    _routine(user_id, appa, "Wind-down for sleep", "sleep",
+             "No screens 30 minutes before bed; lights out by 10:30 PM.", "Nightly", "Appa")
+    _routine(user_id, charan, "Desk eye breaks (20-20-20)", "eyecare",
+             "Every 20 minutes, look 20 feet away for 20 seconds. Blink often.", "Through the workday", "Charan")
+    _routine(user_id, charan, "Evening gym", "workout",
+             "Mon/Wed/Fri strength, Tue/Thu cardio, 45 minutes.", "5x per week", "Charan")
+    _routine(user_id, bruno, "Walks & feeding", "other",
+             "Two 20-minute walks (morning & evening); measured meals twice a day.", "Daily", "Bruno")
+    _routine(user_id, bruno, "Deworming & flea check", "checkup",
+             "Monthly deworming tablet and a tick/flea check.", "Monthly", "Bruno")
 
     # ── appointments: an upcoming one + attended history ──
     write_fact(user_id, amma, "appointment", "Cardiologist review",
                data={"date": _ahead(6), "doctor": "Dr. Rao"}, predicate="booked", unique="never")
     write_fact(user_id, amma, "appointment", "Eye check-up",
                data={"date": _ago(120)}, predicate="attended", unique="never")
-    write_fact(user_id, priya, "appointment", "Annual health check-up",
-               data={"date": _ahead(12)}, predicate="booked", unique="never")
     # mirror the past appointment into Temporal Memory so history_timeline shows it
     tm.record_event(user_id, amma, "appointment", "attended", subject="Eye check-up", occurred_at=_ago(120))
 
-    # ── Reader documents (RAG): an insurance policy + a doctor-visit record ──
-    try:
-        reader_service.ingest_text(user_id, "Amma health insurance policy", _POLICY,
-                                   kind="insurance", filename="amma_policy.txt")
-        reader_service.ingest_text(user_id, "Doctor visit: Amma at City Care Hospital", _VISIT,
-                                   kind="visit", filename="amma_visit.txt")
-    except Exception as e:
-        logger.warning(f"demo Reader seed failed (non-fatal): {e}")
+    # ── Priya: pregnancy / antenatal care (a second, very different care scenario) ──
+    sync_profile_to_kg(user_id, {"id": priya, "conditions": "pregnancy (2nd trimester)"})
+    # prenatal supplements (folic acid running low -> refill-soon)
+    _med(user_id, priya, "Folic acid", "5mg", ["09:00"], 6, 7, "Priya")            # refill soon
+    _med(user_id, priya, "Iron + folic acid (IFA)", "", ["21:00"], 30, 7, "Priya")
+    _med(user_id, priya, "Calcium + Vitamin D3", "500mg", ["10:00", "22:00"], 40, 7, "Priya")
+    # weight GAIN (opposite of Amma) + gentle BP monitoring for pre-eclampsia watch
+    for i, w in enumerate([58, 60, 61.5, 63]):
+        vitals_service.log_vital(user_id, priya, "weight", value=w, at=_ago(90 - 30 * i))
+    for i, (sy, di) in enumerate([(110, 70), (114, 72), (118, 76)]):
+        vitals_service.log_vital(user_id, priya, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
+    # supplement adherence (6/7 this week)
+    for i, st in enumerate(["taken", "taken", "missed", "taken", "taken", "taken", "taken"]):
+        tm.log_adherence(user_id, priya, "medication", "Folic acid", st, occurred_at=_ago(6 - i))
+    # prenatal routines
+    _routine(user_id, priya, "Prenatal walk & stretches", "workout",
+             "20-minute gentle walk daily, plus pelvic tilts and light stretches. "
+             "Avoid lying flat on the back.", "Daily", "Priya")
+    _routine(user_id, priya, "Pregnancy nutrition", "diet",
+             "Iron- and folate-rich meals (leafy greens, dates, lentils), calcium (curd, ragi), "
+             "and plenty of water. Avoid raw or undercooked food and unpasteurised dairy.", "Daily", "Priya")
+    # antenatal appointments: upcoming ANC + GTT + growth scan, and an attended dating scan
+    write_fact(user_id, priya, "appointment", "Obstetrician check-up (ANC)",
+               data={"date": _ahead(4), "doctor": "Dr. Meera"}, predicate="booked", unique="never")
+    write_fact(user_id, priya, "appointment", "Glucose tolerance test (GTT)",
+               data={"date": _ahead(11)}, predicate="booked", unique="never")
+    write_fact(user_id, priya, "appointment", "Anomaly / growth scan",
+               data={"date": _ahead(25)}, predicate="booked", unique="never")
+    write_fact(user_id, priya, "appointment", "Dating scan (1st trimester)",
+               data={"date": _ago(80)}, predicate="attended", unique="never")
+    tm.record_event(user_id, priya, "appointment", "attended", subject="Dating scan (1st trimester)",
+                    occurred_at=_ago(80))
+
+    # ── Reader documents (RAG): insurance, lab & scan reports, and recorded doctor visits ──
+    # (the two kind="visit" docs also populate the Record Doctor Visit "Past visits" list)
+    for label, text, kind, fname in (
+        ("Amma health insurance policy", _POLICY, "insurance", "amma_policy.txt"),
+        ("Amma lab report (HbA1c & lipids)", _LAB, "report", "amma_lab.txt"),
+        ("Doctor visit: Amma at City Care Hospital", _VISIT, "visit", "amma_visit.txt"),
+        ("Doctor visit: Appa at Yashoda (Orthopedics)", _VISIT_APPA, "visit", "appa_visit.txt"),
+        ("Appa left-knee X-ray report", _XRAY, "report", "appa_xray.txt"),
+        ("Priya antenatal scan report", _ANC, "report", "priya_anc.txt"),
+    ):
+        try:
+            reader_service.ingest_text(user_id, label, text, kind=kind, filename=fname)
+        except Exception as e:
+            logger.warning(f"demo Reader seed failed for {label!r} (non-fatal): {e}")
 
     logger.info(f"demo seeded for {user_id}")
     return {"seeded": True, "profiles": 5}
