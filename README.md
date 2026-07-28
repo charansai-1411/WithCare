@@ -325,12 +325,46 @@ Upload → Gemini multimodal **OCR** (reads scans & photos, not just text PDFs) 
 
 **Why:** many caregivers are more fluent speaking than typing, especially in their own language and script. Keeping transcription on Gemini avoids a second vendor and keeps language coverage aligned with the rest of the product.
 
+## 11. Record Doctor Visit — the ambient scribe
+
+At the clinic, one tap starts a **listen-only** Gemini Live session (`/ws/scribe`): it transcribes the consultation **without ever speaking back**, so it captures what the doctor says without interrupting. On stop, a single Gemini call **extracts** the medicines (name, dose, timing), diet, exercise, routines, tests and follow-up, and files a structured **visit record into the Reader** — tagged with patient, hospital, doctor and date. Extracted medicines and routines are surfaced as **one-tap adds**; nothing is auto-prescribed. Later, *"summarise last week's doctor visit"* is answered by the same document search.
+
+<!-- ILLUSTRATION TODO: docs/illustrations/record_visit.png — convert the Mermaid diagram below, then this <img> replaces it -->
+
+```mermaid
+flowchart LR
+  MIC["Mic · 16 kHz PCM"] --> WS["/ws/scribe: Gemini Live<br/>listen-only · model stays silent<br/>input transcription"]
+  WS --> TR["Live transcript"]
+  TR -->|Stop| SV["/api/visits/save"]
+  SV --> EX["Extract · 1 Gemini call:<br/>meds · diet · exercise · routines<br/>tests · follow-up · hospital · doctor"]
+  EX --> RD[("Reader / RAG:<br/>visit record<br/>patient · hospital · date")]
+  EX --> ADD["One-tap add:<br/>Medications · Routines"]
+  RD -->|answered later| SDoc["search_documents"]
+```
+
+**Why:** consultations are fast and easily forgotten. Turning the conversation into a structured, searchable record — one that also feeds Medications and Routines — closes the loop between what the doctor said and what the caregiver actually does.
+
 ## ⋆ Memory — two tiers: Knowledge Graph **+ Temporal Memory** ⭐
 
 Not an agent, but what makes them coherent. WithCare remembers each person on **two time axes**:
 
 - **Current-State Memory (Knowledge Graph)** — *what is true now.* Every agent writes typed facts (`condition`, `medication`, `appointment`, `scheme`, `insurance`, `routine`, `workout_plan`, `diet_plan`, `reminder`, `health_metric`…) as nodes linked to the person, upserted in place; a compact, token-cheap slice is injected into every LLM turn, so WithCare **never re-asks** what it knows.
 - **Temporal Memory** — *what happened and how it's changing.* An append-only, timestamped `events` store (with **validity intervals** for versioned facts like a dose regimen) records vital readings, medication & exercise **adherence**, dose changes, and appointment/lab history. On top sit code-computed **trends** (least-squares slope + delta), **weekly/monthly summaries**, **adherence reports**, **next-event** lookup, and heuristic **"attention" flags** — so the assistant answers with a *trajectory*, not just a snapshot.
+
+<!-- ILLUSTRATION TODO: docs/illustrations/temporal_memory.png — convert the Mermaid diagram below, then this <img> replaces it -->
+
+```mermaid
+flowchart TB
+  ACT["Agent action · check-off ·<br/>'Mom took her tablet'"] --> KG[("Current-State Memory<br/>Knowledge Graph — upsert<br/>= what is TRUE NOW")]
+  ACT --> EV[("Temporal Memory<br/>append-only events<br/>occurred_at + valid_from/valid_to<br/>= what HAPPENED / how it CHANGES")]
+  EV -.->|open interval = current state| KG
+  Q["How is Mom doing? ·<br/>weekly med report · next dose"] --> WIN["Resolve time window<br/>week / month / year"]
+  WIN --> EV
+  WIN --> KG
+  EV --> AN["Analysis in code:<br/>trend · adherence · summary ·<br/>next-event · attention flags"]
+  KG --> AN
+  AN --> ANS["Gemini narrates the numbers<br/>→ time-aware answer"]
+```
 
 <p align="center"><img src="docs/illustrations/memory.png" alt="Memory — the per-profile knowledge graph" width="620" /></p>
 
