@@ -2,51 +2,78 @@
 Demo seed — populate a fresh account with realistic mock data so a judge (or anyone using the
 Judge Login) can explore EVERY feature immediately, without adding anything from scratch.
 
-Everything here is static (no LLM calls) except the Reader documents, which need embeddings.
-Safe to call once per new user; it no-ops if the account already has profiles.
+PERFORMANCE: the production DB is SQLite on a GCS-FUSE volume where every commit fsyncs to Cloud
+Storage (~1-2s each, WAL disabled). So this builds ALL rows in memory and writes them in a SINGLE
+transaction (one commit) instead of ~100 per-write commits — turning a 2-3 minute seed into a few
+seconds. The only network cost left is the Reader embeddings.
 """
+import json
 import uuid
 from datetime import date, datetime, timedelta
 
 from app.db.database import get_db
-from app.services import reader_service, temporal_service as tm, vitals_service
-from app.services.memory_service import sync_profile_to_kg, write_fact
+from app.services.embedding_service import embed_texts
+from app.services.reader_service import _chunk
+from app.services.vitals_service import METRICS
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def _ago(n_days: int) -> str:
-    return (datetime.now() - timedelta(days=n_days)).isoformat(timespec="minutes")
+def _ago(n: int) -> str:
+    return (datetime.now() - timedelta(days=n)).isoformat(timespec="minutes")
 
 
-def _ahead(n_days: int) -> str:
-    return (datetime.now() + timedelta(days=n_days)).isoformat(timespec="minutes")
+def _ahead(n: int) -> str:
+    return (datetime.now() + timedelta(days=n)).isoformat(timespec="minutes")
 
 
-def _profile(db, uid, name, **kw) -> str:
-    pid = "p-" + uuid.uuid4().hex[:12]
-    cols, vals = ["id", "user_id", "name"], [pid, uid, name]
-    for k, v in kw.items():
-        cols.append(k)
-        vals.append(v)
-    db.execute(f"INSERT INTO profiles({','.join(cols)}) VALUES({','.join(['?'] * len(vals))})", vals)
-    return pid
+def _nid(p):
+    return p + uuid.uuid4().hex[:12]
 
 
-def _med(uid, pid, name, dose, times, qty, thresh, recipient):
-    data = {"dose": dose, "times": times, "per_dose": 1, "quantity": qty,
+# ── row builders (accumulate into lists; nothing touches the DB until the end) ──────
+class _Rows:
+    def __init__(self):
+        self.kg = []      # kg_nodes
+        self.ev = []      # events
+
+    def node(self, uid, pid, typ, name, data):
+        self.kg.append((_nid("k-"), uid, pid, typ, name, json.dumps(data)))
+
+    def med(self, uid, pid, name, dose, times, qty, thresh, recipient):
+        self.node(uid, pid, "medication", name, {
+            "dose": dose, "times": times, "per_dose": 1, "quantity": qty,
             "refill_threshold_days": thresh, "start_date": date.today().isoformat(),
-            "recipient": recipient, "email": "", "reminder_ids": [], "event_ids": [], "alerted": False}
-    write_fact(uid, pid, "medication", name, data=data, predicate="takes", unique="name")
+            "recipient": recipient, "email": "", "reminder_ids": [], "event_ids": [], "alerted": False})
+
+    def routine(self, uid, pid, name, category, content, frequency, recipient):
+        self.node(uid, pid, "routine", name, {
+            "category": category, "content": content, "frequency": frequency, "times": [],
+            "recurrence": "", "recipient": recipient, "email": "", "reminder_ids": [], "event_ids": []})
+
+    def appointment(self, uid, pid, name, when, doctor=""):
+        self.node(uid, pid, "appointment", name, {"date": when, "doctor": doctor})
+
+    def vital(self, uid, pid, metric, value=None, systolic=None, diastolic=None, at=None):
+        label, unit, kind = METRICS[metric]
+        at = at or _ago(0)
+        if kind == "bp":
+            data = {"metric": metric, "systolic": systolic, "diastolic": diastolic, "unit": unit, "at": at, "note": ""}
+            disp = f"{int(systolic)}/{int(diastolic)} {unit}"
+        else:
+            data = {"metric": metric, "value": value, "unit": unit, "at": at, "note": ""}
+            disp = f"{value} {unit}".strip()
+        self.node(uid, pid, "health_metric", f"{label}: {disp}", data)
+
+    def event(self, uid, pid, domain, etype, subject="", value=None, unit="", status="",
+              occurred_at=None, valid_from=None, valid_to=None, meta=None):
+        occ = occurred_at or _ago(0)
+        self.ev.append((_nid("e-"), uid, pid, domain, subject, etype, value, None, unit, status or "",
+                        occ, valid_from or occ, valid_to, "manual", "", json.dumps(meta or {})))
 
 
-def _routine(uid, pid, name, category, content, frequency, recipient):
-    data = {"category": category, "content": content, "frequency": frequency, "times": [],
-            "recurrence": "", "recipient": recipient, "email": "", "reminder_ids": [], "event_ids": []}
-    write_fact(uid, pid, "routine", name, data=data, predicate="follows_routine", unique="name")
-
-
+# ── document text (static) ──────────────────────────────────────────────────────────
 _POLICY = """STAR HEALTH — FAMILY HEALTH OPTIMA POLICY (summary)
 Policyholder: Amma   Policy No: WC-DEMO-4521   Type: Family Floater
 Sum Insured: Rs 5,00,000 per year.
@@ -108,162 +135,184 @@ Impression: moderate osteoarthritis of the left knee (Grade 2-3).
 Advice: joint-protection measures, physiotherapy, weight management.
 """
 
+_DOCS = [
+    ("Amma health insurance policy", _POLICY, "insurance", "amma_policy.txt"),
+    ("Amma lab report (HbA1c & lipids)", _LAB, "report", "amma_lab.txt"),
+    ("Doctor visit: Amma at City Care Hospital", _VISIT, "visit", "amma_visit.txt"),
+    ("Doctor visit: Appa at Yashoda (Orthopedics)", _VISIT_APPA, "visit", "appa_visit.txt"),
+    ("Appa left-knee X-ray report", _XRAY, "report", "appa_xray.txt"),
+    ("Priya antenatal scan report", _ANC, "report", "priya_anc.txt"),
+]
+
 
 def seed_demo(user_id: str) -> dict:
-    """Populate a fresh user with a full demo dataset. No-op if it already has profiles."""
+    """Populate a fresh user with a full demo dataset in ONE transaction. No-op if it already
+    has profiles."""
     db = get_db()
     if db.execute("SELECT COUNT(*) AS n FROM profiles WHERE user_id=?", (user_id,)).fetchone()["n"]:
         db.close()
         return {"seeded": False, "reason": "account already has data"}
+    u = user_id
+    r = _Rows()
 
-    # ── care profiles: self + a real family + a pet ──
-    # (mock @example.com emails so the Emergency "contacts" list populates; example.com never
-    #  delivers, and real SOS sending still needs the caregiver's own Gmail connected.)
-    charan = _profile(db, user_id, "Charan", relation="Your own care", is_self=1, age=30,
-                      gender="male", weight=74, height=176, email="charan.demo@example.com")
-    amma = _profile(db, user_id, "Amma", relation="Mother", age=68, gender="female", weight=62,
-                    height=155, conditions="type 2 diabetes, hypertension",
-                    allergies="dairy (lactose intolerant), penicillin", blood_group="B+",
-                    email="amma.demo@example.com")
-    appa = _profile(db, user_id, "Appa", relation="Father", age=72, gender="male", weight=78,
-                    height=170, conditions="arthritis", notes="bad left knee, cannot jump or run",
-                    blood_group="O+", email="appa.demo@example.com")
-    priya = _profile(db, user_id, "Priya", relation="Wife", age=29, gender="female", weight=63,
-                     height=162, blood_group="A+", conditions="pregnancy (2nd trimester)",
-                     notes="Expecting their first child; around 24 weeks, due in about 4 months.",
-                     email="priya.demo@example.com")
-    bruno = _profile(db, user_id, "Bruno", kind="pet", species="dog", relation="Pet", age=4, weight=18)
-    db.commit()
-    db.close()
+    # ── profiles (self + family + pet); mock @example.com emails so Emergency contacts populate ──
+    ids = {}
+    def prof(name, **kw):
+        pid = "p-" + uuid.uuid4().hex[:12]
+        cols, vals = ["id", "user_id", "name"], [pid, u, name]
+        for k, v in kw.items():
+            cols.append(k); vals.append(v)
+        db.execute(f"INSERT INTO profiles({','.join(cols)}) VALUES({','.join(['?'] * len(vals))})", vals)
+        ids[name] = pid
+        return pid
 
-    # conditions -> KG nodes (so the graph + injected memory reflect them)
-    sync_profile_to_kg(user_id, {"id": amma, "conditions": "type 2 diabetes, hypertension"})
-    sync_profile_to_kg(user_id, {"id": appa, "conditions": "arthritis"})
+    charan = prof("Charan", relation="Your own care", is_self=1, age=30, gender="male",
+                  weight=74, height=176, email="charan.demo@example.com")
+    amma = prof("Amma", relation="Mother", age=68, gender="female", weight=62, height=155,
+                conditions="type 2 diabetes, hypertension",
+                allergies="dairy (lactose intolerant), penicillin", blood_group="B+",
+                email="amma.demo@example.com")
+    appa = prof("Appa", relation="Father", age=72, gender="male", weight=78, height=170,
+                conditions="arthritis", notes="bad left knee, cannot jump or run",
+                blood_group="O+", email="appa.demo@example.com")
+    priya = prof("Priya", relation="Wife", age=29, gender="female", weight=63, height=162,
+                 blood_group="A+", conditions="pregnancy (2nd trimester)",
+                 notes="Expecting their first child; around 24 weeks, due in about 4 months.",
+                 email="priya.demo@example.com")
+    bruno = prof("Bruno", kind="pet", species="dog", relation="Pet", age=4, weight=18)
 
-    # ── medications (Amlodipine is low on stock -> refill-soon alert) ──
-    _med(user_id, amma, "Metformin", "500mg", ["09:00", "21:00"], 30, 5, "Amma")   # ~15 days left
-    _med(user_id, amma, "Amlodipine", "5mg", ["08:00", "20:00"], 4, 5, "Amma")     # ~2 days -> refill soon
-    _med(user_id, appa, "Paracetamol", "500mg", ["09:00"], 20, 5, "Appa")
+    # ── conditions ──
+    for cond in ("type 2 diabetes", "hypertension"):
+        r.node(u, amma, "condition", cond, {})
+    r.node(u, appa, "condition", "arthritis", {})
+    r.node(u, priya, "condition", "pregnancy (2nd trimester)", {})
 
-    # ── vitals: rising sugar, falling weight, rising BP -> rich temporal trends ──
+    # ── medications (Amlodipine & Folic acid deliberately low -> refill-soon) ──
+    r.med(u, amma, "Metformin", "500mg", ["09:00", "21:00"], 30, 5, "Amma")
+    r.med(u, amma, "Amlodipine", "5mg", ["08:00", "20:00"], 4, 5, "Amma")
+    r.med(u, appa, "Paracetamol", "500mg", ["09:00"], 20, 5, "Appa")
+    r.med(u, priya, "Folic acid", "5mg", ["09:00"], 6, 7, "Priya")
+    r.med(u, priya, "Iron + folic acid (IFA)", "", ["21:00"], 30, 7, "Priya")
+    r.med(u, priya, "Calcium + Vitamin D3", "500mg", ["10:00", "22:00"], 40, 7, "Priya")
+
+    # ── vitals (Amma sugar up + weight down; Priya weight up; plus HR/SpO2/others) ──
     for i, s in enumerate([130, 142, 155, 170]):
-        vitals_service.log_vital(user_id, amma, "blood_sugar", value=s, at=_ago(21 - 7 * i))
+        r.vital(u, amma, "blood_sugar", value=s, at=_ago(21 - 7 * i))
     for i, w in enumerate([68, 66, 64, 62]):
-        vitals_service.log_vital(user_id, amma, "weight", value=w, at=_ago(90 - 30 * i))
+        r.vital(u, amma, "weight", value=w, at=_ago(90 - 30 * i))
     for i, (sy, di) in enumerate([(130, 84), (138, 88), (148, 92)]):
-        vitals_service.log_vital(user_id, amma, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
+        r.vital(u, amma, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
     for i, hr in enumerate([78, 82, 80]):
-        vitals_service.log_vital(user_id, amma, "heart_rate", value=hr, at=_ago(14 - 6 * i))
+        r.vital(u, amma, "heart_rate", value=hr, at=_ago(14 - 6 * i))
     for i, sp in enumerate([97, 97, 96]):
-        vitals_service.log_vital(user_id, amma, "spo2", value=sp, at=_ago(14 - 6 * i))
-    # Appa: stable weight, mildly high BP, heart rate
+        r.vital(u, amma, "spo2", value=sp, at=_ago(14 - 6 * i))
     for i, w in enumerate([79, 78.5, 78, 78]):
-        vitals_service.log_vital(user_id, appa, "weight", value=w, at=_ago(90 - 30 * i))
+        r.vital(u, appa, "weight", value=w, at=_ago(90 - 30 * i))
     for i, (sy, di) in enumerate([(128, 82), (132, 84), (130, 82)]):
-        vitals_service.log_vital(user_id, appa, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
-    # Charan (self, the default view): a healthy adult baseline so the Health page isn't empty
+        r.vital(u, appa, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
     for i, w in enumerate([75, 74.5, 74, 74]):
-        vitals_service.log_vital(user_id, charan, "weight", value=w, at=_ago(90 - 30 * i))
+        r.vital(u, charan, "weight", value=w, at=_ago(90 - 30 * i))
     for i, (sy, di) in enumerate([(120, 78), (118, 76), (122, 80)]):
-        vitals_service.log_vital(user_id, charan, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
+        r.vital(u, charan, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
     for i, hr in enumerate([72, 70, 74]):
-        vitals_service.log_vital(user_id, charan, "heart_rate", value=hr, at=_ago(14 - 6 * i))
-    # Bruno: pet weight tracking
+        r.vital(u, charan, "heart_rate", value=hr, at=_ago(14 - 6 * i))
     for i, w in enumerate([17.5, 17.8, 18, 18]):
-        vitals_service.log_vital(user_id, bruno, "weight", value=w, at=_ago(90 - 30 * i))
+        r.vital(u, bruno, "weight", value=w, at=_ago(90 - 30 * i))
+    for i, w in enumerate([58, 60, 61.5, 63]):
+        r.vital(u, priya, "weight", value=w, at=_ago(90 - 30 * i))
+    for i, (sy, di) in enumerate([(110, 70), (114, 72), (118, 76)]):
+        r.vital(u, priya, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
 
     # ── adherence history (Temporal Memory) ──
     for i, st in enumerate(["taken", "missed", "taken", "taken", "missed", "taken", "taken"]):
-        tm.log_adherence(user_id, amma, "medication", "Metformin", st, occurred_at=_ago(6 - i))
+        r.event(u, amma, "medication", st, subject="Metformin", status=st, occurred_at=_ago(6 - i))
     for i, st in enumerate(["done", "skipped", "done", "skipped", "done"]):
-        tm.log_adherence(user_id, appa, "exercise", "Evening walk", st, occurred_at=_ago(4 - i),
-                         value=30, unit="min")
-
-    # ── dose-change history (validity intervals): Metformin was 250mg, now 500mg ──
-    tm.record_med_change(user_id, amma, "Metformin", dose="250mg", occurred_at=_ago(120))
-    tm.record_med_change(user_id, amma, "Metformin", dose="500mg", occurred_at=_ago(45))
-
-    # ── routines ──
-    _routine(user_id, appa, "Knee-safe workout", "workout",
-             "**Mon:** 30-min walk\n**Wed:** chair squats x10, seated leg raises\n"
-             "**Fri:** 30-min walk\nNo jumping or running.", "3x per week", "Appa")
-    _routine(user_id, amma, "Morning & night skincare", "skincare",
-             "Cleanser, then moisturizer with SPF 30 (AM) / night cream (PM), and a vitamin C serum.",
-             "Twice daily (AM & PM)", "Amma")
-    _routine(user_id, amma, "Quarterly eye check-up", "checkup",
-             "Diabetic retinopathy screening with the ophthalmologist.", "Every 3 months", "Amma")
-    _routine(user_id, amma, "Stay hydrated", "hydration",
-             "8 glasses of water through the day; a glass with each medicine.", "Throughout the day", "Amma")
-    _routine(user_id, amma, "Daily diabetic foot check", "checkup",
-             "Check feet for cuts, blisters or numbness; moisturise, but not between the toes.", "Daily", "Amma")
-    _routine(user_id, appa, "Knee physiotherapy", "physio",
-             "Quad sets, straight-leg raises, and heel slides — 10 reps each, twice a day.", "Twice daily", "Appa")
-    _routine(user_id, appa, "Wind-down for sleep", "sleep",
-             "No screens 30 minutes before bed; lights out by 10:30 PM.", "Nightly", "Appa")
-    _routine(user_id, charan, "Desk eye breaks (20-20-20)", "eyecare",
-             "Every 20 minutes, look 20 feet away for 20 seconds. Blink often.", "Through the workday", "Charan")
-    _routine(user_id, charan, "Evening gym", "workout",
-             "Mon/Wed/Fri strength, Tue/Thu cardio, 45 minutes.", "5x per week", "Charan")
-    _routine(user_id, bruno, "Walks & feeding", "other",
-             "Two 20-minute walks (morning & evening); measured meals twice a day.", "Daily", "Bruno")
-    _routine(user_id, bruno, "Deworming & flea check", "checkup",
-             "Monthly deworming tablet and a tick/flea check.", "Monthly", "Bruno")
-
-    # ── appointments: an upcoming one + attended history ──
-    write_fact(user_id, amma, "appointment", "Cardiologist review",
-               data={"date": _ahead(6), "doctor": "Dr. Rao"}, predicate="booked", unique="never")
-    write_fact(user_id, amma, "appointment", "Eye check-up",
-               data={"date": _ago(120)}, predicate="attended", unique="never")
-    # mirror the past appointment into Temporal Memory so history_timeline shows it
-    tm.record_event(user_id, amma, "appointment", "attended", subject="Eye check-up", occurred_at=_ago(120))
-
-    # ── Priya: pregnancy / antenatal care (a second, very different care scenario) ──
-    sync_profile_to_kg(user_id, {"id": priya, "conditions": "pregnancy (2nd trimester)"})
-    # prenatal supplements (folic acid running low -> refill-soon)
-    _med(user_id, priya, "Folic acid", "5mg", ["09:00"], 6, 7, "Priya")            # refill soon
-    _med(user_id, priya, "Iron + folic acid (IFA)", "", ["21:00"], 30, 7, "Priya")
-    _med(user_id, priya, "Calcium + Vitamin D3", "500mg", ["10:00", "22:00"], 40, 7, "Priya")
-    # weight GAIN (opposite of Amma) + gentle BP monitoring for pre-eclampsia watch
-    for i, w in enumerate([58, 60, 61.5, 63]):
-        vitals_service.log_vital(user_id, priya, "weight", value=w, at=_ago(90 - 30 * i))
-    for i, (sy, di) in enumerate([(110, 70), (114, 72), (118, 76)]):
-        vitals_service.log_vital(user_id, priya, "blood_pressure", systolic=sy, diastolic=di, at=_ago(20 - 10 * i))
-    # supplement adherence (6/7 this week)
+        r.event(u, appa, "exercise", st, subject="Evening walk", status=st, value=30, unit="min", occurred_at=_ago(4 - i))
     for i, st in enumerate(["taken", "taken", "missed", "taken", "taken", "taken", "taken"]):
-        tm.log_adherence(user_id, priya, "medication", "Folic acid", st, occurred_at=_ago(6 - i))
-    # prenatal routines
-    _routine(user_id, priya, "Prenatal walk & stretches", "workout",
-             "20-minute gentle walk daily, plus pelvic tilts and light stretches. "
-             "Avoid lying flat on the back.", "Daily", "Priya")
-    _routine(user_id, priya, "Pregnancy nutrition", "diet",
-             "Iron- and folate-rich meals (leafy greens, dates, lentils), calcium (curd, ragi), "
-             "and plenty of water. Avoid raw or undercooked food and unpasteurised dairy.", "Daily", "Priya")
-    # antenatal appointments: upcoming ANC + GTT + growth scan, and an attended dating scan
-    write_fact(user_id, priya, "appointment", "Obstetrician check-up (ANC)",
-               data={"date": _ahead(4), "doctor": "Dr. Meera"}, predicate="booked", unique="never")
-    write_fact(user_id, priya, "appointment", "Glucose tolerance test (GTT)",
-               data={"date": _ahead(11)}, predicate="booked", unique="never")
-    write_fact(user_id, priya, "appointment", "Anomaly / growth scan",
-               data={"date": _ahead(25)}, predicate="booked", unique="never")
-    write_fact(user_id, priya, "appointment", "Dating scan (1st trimester)",
-               data={"date": _ago(80)}, predicate="attended", unique="never")
-    tm.record_event(user_id, priya, "appointment", "attended", subject="Dating scan (1st trimester)",
-                    occurred_at=_ago(80))
+        r.event(u, priya, "medication", st, subject="Folic acid", status=st, occurred_at=_ago(6 - i))
 
-    # ── Reader documents (RAG): insurance, lab & scan reports, and recorded doctor visits ──
-    # (the two kind="visit" docs also populate the Record Doctor Visit "Past visits" list)
-    for label, text, kind, fname in (
-        ("Amma health insurance policy", _POLICY, "insurance", "amma_policy.txt"),
-        ("Amma lab report (HbA1c & lipids)", _LAB, "report", "amma_lab.txt"),
-        ("Doctor visit: Amma at City Care Hospital", _VISIT, "visit", "amma_visit.txt"),
-        ("Doctor visit: Appa at Yashoda (Orthopedics)", _VISIT_APPA, "visit", "appa_visit.txt"),
-        ("Appa left-knee X-ray report", _XRAY, "report", "appa_xray.txt"),
-        ("Priya antenatal scan report", _ANC, "report", "priya_anc.txt"),
-    ):
-        try:
-            reader_service.ingest_text(user_id, label, text, kind=kind, filename=fname)
-        except Exception as e:
-            logger.warning(f"demo Reader seed failed for {label!r} (non-fatal): {e}")
+    # ── dose-change history (validity intervals): Metformin 250mg -> 500mg ──
+    r.event(u, amma, "medication", "changed", subject="Metformin", occurred_at=_ago(120),
+            valid_from=_ago(120), valid_to=_ago(45), meta={"dose": "250mg"})
+    r.event(u, amma, "medication", "changed", subject="Metformin", occurred_at=_ago(45),
+            valid_from=_ago(45), valid_to=None, meta={"dose": "500mg"})
 
-    logger.info(f"demo seeded for {user_id}")
+    # ── routines (across every category) ──
+    r.routine(u, appa, "Knee-safe workout", "workout",
+              "**Mon:** 30-min walk\n**Wed:** chair squats x10, seated leg raises\n"
+              "**Fri:** 30-min walk\nNo jumping or running.", "3x per week", "Appa")
+    r.routine(u, amma, "Morning & night skincare", "skincare",
+              "Cleanser, then moisturizer with SPF 30 (AM) / night cream (PM), and a vitamin C serum.",
+              "Twice daily (AM & PM)", "Amma")
+    r.routine(u, amma, "Quarterly eye check-up", "checkup",
+              "Diabetic retinopathy screening with the ophthalmologist.", "Every 3 months", "Amma")
+    r.routine(u, amma, "Stay hydrated", "hydration",
+              "8 glasses of water through the day; a glass with each medicine.", "Throughout the day", "Amma")
+    r.routine(u, amma, "Daily diabetic foot check", "checkup",
+              "Check feet for cuts, blisters or numbness; moisturise, but not between the toes.", "Daily", "Amma")
+    r.routine(u, appa, "Knee physiotherapy", "physio",
+              "Quad sets, straight-leg raises, and heel slides — 10 reps each, twice a day.", "Twice daily", "Appa")
+    r.routine(u, appa, "Wind-down for sleep", "sleep",
+              "No screens 30 minutes before bed; lights out by 10:30 PM.", "Nightly", "Appa")
+    r.routine(u, charan, "Desk eye breaks (20-20-20)", "eyecare",
+              "Every 20 minutes, look 20 feet away for 20 seconds. Blink often.", "Through the workday", "Charan")
+    r.routine(u, charan, "Evening gym", "workout",
+              "Mon/Wed/Fri strength, Tue/Thu cardio, 45 minutes.", "5x per week", "Charan")
+    r.routine(u, bruno, "Walks & feeding", "other",
+              "Two 20-minute walks (morning & evening); measured meals twice a day.", "Daily", "Bruno")
+    r.routine(u, bruno, "Deworming & flea check", "checkup",
+              "Monthly deworming tablet and a tick/flea check.", "Monthly", "Bruno")
+    r.routine(u, priya, "Prenatal walk & stretches", "workout",
+              "20-minute gentle walk daily, plus pelvic tilts and light stretches. "
+              "Avoid lying flat on the back.", "Daily", "Priya")
+    r.routine(u, priya, "Pregnancy nutrition", "diet",
+              "Iron- and folate-rich meals (leafy greens, dates, lentils), calcium (curd, ragi), "
+              "and plenty of water. Avoid raw or undercooked food and unpasteurised dairy.", "Daily", "Priya")
+
+    # ── appointments (upcoming + attended history) ──
+    r.appointment(u, amma, "Cardiologist review", _ahead(6), doctor="Dr. Rao")
+    r.appointment(u, amma, "Eye check-up", _ago(120))
+    r.appointment(u, priya, "Obstetrician check-up (ANC)", _ahead(4), doctor="Dr. Meera")
+    r.appointment(u, priya, "Glucose tolerance test (GTT)", _ahead(11))
+    r.appointment(u, priya, "Anomaly / growth scan", _ahead(25))
+    r.appointment(u, priya, "Dating scan (1st trimester)", _ago(80))
+    r.event(u, amma, "appointment", "attended", subject="Eye check-up", occurred_at=_ago(120))
+    r.event(u, priya, "appointment", "attended", subject="Dating scan (1st trimester)", occurred_at=_ago(80))
+
+    # ── Reader documents: chunk ALL docs, embed in ONE network call, then insert with the rest ──
+    doc_rows, chunk_rows = [], []
+    specs, all_chunks = [], []          # specs: (label, kind, fname, text, chunks, offset)
+    for label, text, kind, fname in _DOCS:
+        chunks = _chunk(text)
+        specs.append((label, kind, fname, text, chunks, len(all_chunks)))
+        all_chunks.extend(chunks)
+    try:
+        vecs = embed_texts(all_chunks, task_type="RETRIEVAL_DOCUMENT") if all_chunks else []
+    except Exception as e:
+        logger.warning(f"demo Reader embed failed (non-fatal): {e}")
+        vecs = []
+    if vecs:
+        for label, kind, fname, text, chunks, off in specs:
+            did = "d-" + uuid.uuid4().hex[:12]
+            doc_rows.append((did, u, fname, label, "text/plain", kind, len(text), len(chunks), "ready"))
+            for j, c in enumerate(chunks):
+                chunk_rows.append(("dc-" + uuid.uuid4().hex[:12], did, u, j, c, json.dumps(vecs[off + j])))
+
+    # ── ONE transaction: write everything, commit once ──
+    db.executemany("INSERT INTO kg_nodes(id,user_id,profile_id,type,name,data) VALUES(?,?,?,?,?,?)", r.kg)
+    db.executemany(
+        "INSERT INTO events(id,user_id,profile_id,domain,subject,event_type,value,value2,unit,status,"
+        "occurred_at,valid_from,valid_to,source,subject_ref,meta) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", r.ev)
+    if doc_rows:
+        db.executemany(
+            "INSERT INTO documents(id,user_id,filename,label,mime,kind,char_count,chunk_count,status) "
+            "VALUES(?,?,?,?,?,?,?,?,?)", doc_rows)
+        db.executemany(
+            "INSERT INTO doc_chunks(id,document_id,user_id,chunk_index,text,embedding) VALUES(?,?,?,?,?,?)",
+            chunk_rows)
+    db.commit()
+    db.close()
+
+    logger.info(f"demo seeded for {u} (1 commit: {len(r.kg)} nodes, {len(r.ev)} events, {len(doc_rows)} docs)")
     return {"seeded": True, "profiles": 5}
