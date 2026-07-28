@@ -38,9 +38,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/agents-9-EA4335?style=flat-square" alt="9 agents" />
-  <img src="https://img.shields.io/badge/typed_tools-14-FBBC04?style=flat-square" alt="14 typed tools" />
+  <img src="https://img.shields.io/badge/typed_tools-22-FBBC04?style=flat-square" alt="22 typed tools" />
   <img src="https://img.shields.io/badge/languages-11-4285F4?style=flat-square" alt="11 languages" />
   <img src="https://img.shields.io/badge/knowledge_graph-12_fact_types-34A853?style=flat-square" alt="12 KG fact types" />
+  <img src="https://img.shields.io/badge/temporal_memory-trends_%26_adherence-4285F4?style=flat-square" alt="Temporal Memory — trends and adherence" />
   <img src="https://img.shields.io/badge/adversarial_tests-452%2F458_(99%25)-34A853?style=flat-square" alt="452 of 458 adversarial tests passing" />
   <img src="https://img.shields.io/badge/injection_%26_clinical-100%25-34A853?style=flat-square" alt="100% on injection and clinical safety" />
   <img src="https://img.shields.io/badge/load_run-0_errors_%2F_1086_reqs-34A853?style=flat-square" alt="zero errors across 1086 requests" />
@@ -72,6 +73,7 @@ One question, "*my mother has diabetes and we're in Hyderabad — what's covered
 | Open the policy PDF, hunt for the room-rent clause | `search_documents` — cited answer from *their own* file |
 | Phone calendar → set reminders they'll forget to repeat | `set_reminder` — recurring, on the **right person's** calendar |
 | Re-explain the whole history at every step | Knowledge graph — **12 typed fact types**, never re-asked |
+| Eyeball weeks of readings to see if sugar/weight is trending | **Temporal Memory** — trends, adherence & weekly reports on demand |
 
 **Who it's for.** The ~60–70M Indian households managing chronic care for an elderly parent (173M Indians aged 60+, 2026 NCP projection; ~40% with a chronic condition, LASI). The same engine extends to any dependent — the 100M+ families managing a child's health, and India's fast-growing pet-owning base. **One care-navigation layer, every dependent under one roof.**
 
@@ -79,7 +81,7 @@ One question, "*my mother has diabetes and we're in Hyderabad — what's covered
 
 A caregiver in Hyderabad adds a **care profile** for their mother (68, type-2 diabetes, hypertension) and simply chats — by typing, by **voice**, or in a **live spoken conversation**. WithCare **routes** the concern across **9 specialist agents**, **grounds** every external fact in real data, **remembers** the person in a **12-type knowledge graph** so it never re-asks, **gates** every irreversible or clinical action in code, and **shows its work** as an inspectable agent trace.
 
-Beyond chat it runs the day-to-day of caregiving: **routines** (workout, diet, skincare, check-ups…), **medications** with dose reminders and refill alerts, **vitals** logging with trends, an **emergency SOS**, and **RAG** over the family's own policies and reports. It replies **in the user's own language** — including Indian languages typed in Latin letters.
+Beyond chat it runs the day-to-day of caregiving: **routines** (workout, diet, skincare, check-ups…), **medications** with dose reminders, refill alerts and a one-tap **adherence check-off**, **vitals** logging, an **emergency SOS**, a **Record Doctor Visit** mode that transcribes a consultation and files a structured summary, and **RAG** over the family's own policies and reports. Crucially, it remembers on two axes — the **Knowledge Graph** for what's true now and a **Temporal Memory** for how things are *changing over time*, so it can answer *"how is Mom doing this month?"* with a real trend, not just today's number. It replies **in the user's own language and native script** — including Indian languages typed in Latin letters.
 
 **Not a slide-ware demo.** Every capability below is live on Cloud Run and continuously verified by **458 adversarial tests** and a **1,086-request** load run — both against production, with results published in [Evaluation](#evaluation).
 
@@ -135,7 +137,7 @@ Gemini isn't a swappable "LLM box" here; **five capabilities that would each be 
 | A live-search / scraping vendor | **Grounded Google Search** | Private insurance and medicine prices, fetched live |
 | A realtime voice stack (STT+TTS) | **Gemini Live (native audio)** | Spoken conversation with barge-in over a WebSocket bridge |
 
-And the capability the whole architecture rests on: **function calling**. Gemini emits **14 typed tool calls** that the backend validates and executes — which is exactly what lets us separate *reasoning* from *action*, and put the guardrails in code. A text-only model would force us back to prompt-parsing, where safety can't be enforced.
+And the capability the whole architecture rests on: **function calling**. Gemini emits **22 typed tool calls** that the backend validates and executes — which is exactly what lets us separate *reasoning* from *action*, and put the guardrails in code. A text-only model would force us back to prompt-parsing, where safety can't be enforced.
 
 **The measured payoff:** the clinical gate refuses an unsafe request in **0.3s — before a single reasoning token is spent**, because the cheap keyword fast-path runs first. One vendor also means one place to reason about cost, latency and safety, instead of six.
 
@@ -212,7 +214,7 @@ Every one of these is a measured delta on the **live** deployment, not a code re
 
 # Innovation — what's actually new here
 
-Most agent demos are a prompt with tools bolted on. Four things here are deliberately different, and each is **verified by the eval above**, not asserted:
+Most agent demos are a prompt with tools bolted on. Five things here are deliberately different, and each is **verified by the eval above**, not asserted:
 
 **1. The model is not trusted to report its own actions.**
 Standard agent safety stops the model from *doing* the wrong thing. WithCare also stops it from *saying* it did something. Each turn records which tools genuinely executed, and any "booked / sent / added to your calendar" claim in the final answer is validated against that record — because `schedule_appointment` only ever *stages*, such a claim from the loop is never truthful. A prompt injection that beat the model **3/3** now fails **0/3**. In healthcare, a false confirmation is as dangerous as a false action: a caregiver who believes an appointment exists simply doesn't show up.
@@ -226,7 +228,10 @@ Most Indians type their language in Latin letters — "*meri maa ko sugar hai*" 
 **4. One knowledge graph, shared by agents and UI alike.**
 **12 typed fact types** written by every agent to a per-profile graph, injected as a compact slice into each turn. The same graph renders the Profile, Routines and Tasks views — so chat and UI can never disagree, and the system never re-asks what it already knows (**6/6** memory tests). Behaviour on top of it is steered by **5 markdown skill playbooks**, so tone and output format are tunable in plain English with no code deploy.
 
-**Built to be inspected, not just demoed:** ~11.6k lines (6.0k backend, 5.6k frontend), 9 agents, 14 typed tools, 11 API surfaces, and an SSE trace that shows each specialist as it runs — so a judge can watch the reasoning rather than take it on faith.
+**5. Memory has a *time* axis — snapshot *and* trajectory.**
+Most assistants store only the latest value, so "how is Mom doing?" gets "sugar is 170." WithCare adds a **Temporal Memory**: an append-only event store with **validity intervals**, feeding code-computed trends, adherence rates, weekly reports and heuristic attention flags. So the answer becomes *"her sugar rose 130→170 over four weeks — worth discussing with her doctor; she's taken 5 of 7 doses this week."* The trend math runs in code (deterministic, free) and Gemini only narrates it — a time-aware answer that **can't fabricate a trend**. See [`docs/TEMPORAL_MEMORY.md`](docs/TEMPORAL_MEMORY.md).
+
+**Built to be inspected, not just demoed:** 9 agents, **22 typed tools**, 14 API surfaces, a two-tier memory (Knowledge Graph + Temporal Memory), and an SSE trace that shows each specialist as it runs — so a judge can watch the reasoning rather than take it on faith.
 
 ---
 
@@ -320,13 +325,20 @@ Upload → Gemini multimodal **OCR** (reads scans & photos, not just text PDFs) 
 
 **Why:** many caregivers are more fluent speaking than typing, especially in their own language and script. Keeping transcription on Gemini avoids a second vendor and keeps language coverage aligned with the rest of the product.
 
-## ⋆ Memory — the per-profile Knowledge Graph
+## ⋆ Memory — two tiers: Knowledge Graph **+ Temporal Memory** ⭐
 
-Not an agent, but what makes them coherent. Every agent writes typed facts (`condition`, `medication`, `appointment`, `scheme`, `insurance`, `routine`, `workout_plan`, `diet_plan`, `reminder`, `health_metric`…) as nodes linked to the person; a compact, token-cheap slice is injected into every LLM turn.
+Not an agent, but what makes them coherent. WithCare remembers each person on **two time axes**:
+
+- **Current-State Memory (Knowledge Graph)** — *what is true now.* Every agent writes typed facts (`condition`, `medication`, `appointment`, `scheme`, `insurance`, `routine`, `workout_plan`, `diet_plan`, `reminder`, `health_metric`…) as nodes linked to the person, upserted in place; a compact, token-cheap slice is injected into every LLM turn, so WithCare **never re-asks** what it knows.
+- **Temporal Memory** — *what happened and how it's changing.* An append-only, timestamped `events` store (with **validity intervals** for versioned facts like a dose regimen) records vital readings, medication & exercise **adherence**, dose changes, and appointment/lab history. On top sit code-computed **trends** (least-squares slope + delta), **weekly/monthly summaries**, **adherence reports**, **next-event** lookup, and heuristic **"attention" flags** — so the assistant answers with a *trajectory*, not just a snapshot.
 
 <p align="center"><img src="docs/illustrations/memory.png" alt="Memory — the per-profile knowledge graph" width="620" /></p>
 
-**Why:** typed memory is compact enough to inject every turn, so WithCare **never re-asks** what it knows. Replaying raw chat history is expensive and noisy; a typed graph is queryable, renders the Profile/Routines/Tasks views, and can migrate to a real graph DB later without changing callers. Schema: [`withcare-backend/MEMORY.md`](withcare-backend/MEMORY.md).
+> **Snapshot → trajectory.** *"How is Mom doing?"* — without Temporal Memory: *"Blood sugar is 170."* With it: **"Over the last four weeks her blood sugar rose from 130 to 170 — an upward trend worth raising with her doctor. She's also taken 5 of 7 doses this week."** The numbers are computed in code; Gemini only narrates them, so it stays cheap and never fabricates a trend.
+
+Now answerable on demand: *"weekly medication report"*, *"has Dad been exercising?"* (3 of 5 walks), *"any weight change?"* (down 6 kg over four months), *"when is her next dose / check-up?"*, and *"what was her dose in February?"* (validity interval). Full design: [`docs/TEMPORAL_MEMORY.md`](docs/TEMPORAL_MEMORY.md).
+
+**Why two tiers:** the KG stays O(1) for "right now" and cheap to inject every turn; Temporal Memory keeps the history the KG throws away when it upserts. The same service call writes both, so they never drift — and the append-only event store is the natural first thing to move to Firestore/BigQuery when scaling out. Schema: [`withcare-backend/MEMORY.md`](withcare-backend/MEMORY.md).
 
 ## ⋆ Skills — markdown playbooks that steer the agents
 
@@ -355,7 +367,7 @@ The interface follows **[Material 3 (Material You)](https://m3.material.io/)**: 
 
 | Layer | Choice |
 |------|--------|
-| **Reasoning** | **Gemini 2.5 Flash** on **Vertex AI** — function calling (**14 typed tools**), multimodal vision + audio, grounded Google Search |
+| **Reasoning** | **Gemini 2.5 Flash** on **Vertex AI** — function calling (**22 typed tools**), multimodal vision + audio, grounded Google Search |
 | **Realtime voice** | **Gemini Live** (`gemini-live-2.5-flash`, native audio, barge-in) over a FastAPI **WebSocket** bridge · multimodal STT for voice input |
 | **Retrieval** | `text-embedding-004` + cosine top-k over the user's own documents; Gemini multimodal **OCR** ingests PDFs *and* phone photos |
 | **Agent core** | Custom function-calling orchestrator · **9 agents** · **5 markdown skill playbooks** (`skills/*.md`) |
@@ -374,7 +386,7 @@ WithCare/
 ├── withcare-backend/                  # FastAPI service — the multi-agent core
 │   ├── app/
 │   │   ├── main.py  config.py         # entry + SSE /chat/stream · settings
-│   │   ├── orchestrator/              # agent.py — Gemini loop, 14 typed tools, guardrails
+│   │   ├── orchestrator/              # agent.py — Gemini loop, 22 typed tools, guardrails
 │   │   │                              # router.py — pre-loop clinical / ambiguity gate
 │   │   ├── agents/                    # 8 specialists: facility · scheme · insurance
 │   │   │                              # reminder · action · workout · diet · product
